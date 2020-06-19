@@ -1,8 +1,8 @@
 from copy import deepcopy
 from typing import List, Optional, Tuple, Union
 
-from dataforest.Tree import Tree
-from dataforest.utils import update_recursive
+from dataforest.filesystem.Tree import Tree
+from dataforest.utils.utils import update_recursive
 
 
 class DataTree:
@@ -139,7 +139,7 @@ class DataTree:
 
     def _new_tree(self, compartment: str, tree: Optional[dict]):
         """
-        Creates a new `Tree` in the specified compartment . The new tree now becomes the `active_tree`.
+        Creates a new `Tree` in the specified compartment . The new filesystem now becomes the `active_tree`.
         Args:
             compartment: "subset", "filter", or "partition"
             tree: `dict` which is to be used to create new `Tree`
@@ -257,7 +257,7 @@ class DataTree:
         Converts a single `Tree` to a string in `ForestQuery` syntax. using
         `_helper` to recursively generate a string from `Tree.dict`.
         Args:
-            tree: tree to be converted to string
+            tree: filesystem to be converted to string
 
         Returns:
             str_: `ForestQuery` string

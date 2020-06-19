@@ -1,7 +1,8 @@
-from pathlib import Path
 from typing import Callable, Dict, Optional, Set, Tuple, Union
 
-from dataforest.utils import node_lineage_lookup
+from pathlib import Path
+
+from dataforest.utils.utils import node_lineage_lookup
 
 
 class ProcessSchema:
@@ -13,7 +14,7 @@ class ProcessSchema:
     Class Attributes:
         FILE_MAP: mapping of `process_name`->`file_alias`->`filename`
             where the `file_alias` is the name by which the file will be
-            referenced in the `ORM`.
+            referenced in the `DataForest`.
             Examples:
                 {"process_1":
                    {"output_1": "arbitrary_filename.tsv.gz",

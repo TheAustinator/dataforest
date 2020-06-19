@@ -1,53 +1,53 @@
 import logging
 import os
-from pathlib import Path
 from typing import Dict, List, TYPE_CHECKING
 
 import pandas as pd
+from pathlib import Path
 from termcolor import cprint
 
-from dataforest.DataTree import DataTree
+from dataforest.filesystem.DataTree import DataTree
 
 if TYPE_CHECKING:
-    from dataforest.ORM import DataForest
+    from dataforest.core.DataForest import DataForest
 
 
 class ProcessRun:
     """
-    Interface to the files, status, logs, and orm at a node representing a run
+    Interface to the files, status, logs, and DataForest at a node representing a run
     of a specific process.
     """
 
-    def __init__(self, orm: "DataForest", process_name: str):
+    def __init__(self, forest: "DataForest", process_name: str):
         self.logger = logging.getLogger(f"ProcessRun - {process_name}")
-        if process_name not in orm.spec:
-            raise ValueError(f"key '{process_name}' not in spec: {orm.spec}")
+        if process_name not in forest.spec:
+            raise ValueError(f"key '{process_name}' not in spec: {forest.spec}")
         self.process_name = process_name
-        self._orm = None
-        self._parent_orm = orm
+        self._forest = None
+        self._parent_forest = forest
 
     @property
-    def orm(self) -> "DataForest":
+    def forest(self) -> "DataForest":
         """
-        ORM `at` current `ProcessRun` node, which is cached after initial
-        access. If the parent ORM has no metadata yet, the access to the
-        current node should only be used for paths, as the parent ORM is
+        DataForest `at` current `ProcessRun` node, which is cached after initial
+        access. If the parent DataForest has no metadata yet, the access to the
+        current node should only be used for paths, as the parent DataForest is
         returned.
         """
         # TODO: silent failure prone
-        if not self._orm:
-            self._orm = self._parent_orm.at(self.process_name)
-        return self._orm
+        if not self._forest:
+            self._forest = self._parent_forest.at(self.process_name)
+        return self._forest
 
     @property
-    def orm_any(self):
-        """orm if loaded, otherwise parent orm. For simple things like paths"""
-        return self._orm if self._orm else self._parent_orm
+    def forest_any(self):
+        """quick access if it doesn't matter whether forest or parent forest"""
+        return self._forest if self._forest else self._parent_forest
 
     @property
     def path(self) -> Path:
         """Path to directory containing process output files and logs"""
-        return self.orm_any.paths[self.process_name]
+        return self.forest_any.paths[self.process_name]
 
     @property
     def files(self) -> List[str]:
@@ -64,7 +64,7 @@ class ProcessRun:
         keys (str): process `file_alias`es (defined in `ProcessSchema`)
         values (Path): paths to files
         """
-        file_lookup = self.orm_any.schema.FILE_MAP[self.process_name]
+        file_lookup = self.forest_any.schema.FILE_MAP[self.process_name]
         return {file_alias: self.path / file_lookup[file_alias] for file_alias in file_lookup}
 
     @property
@@ -73,7 +73,7 @@ class ProcessRun:
         keys: process `file_alias`es (defined in `ProcessSchema`)
         values: filenames
         """
-        file_lookup = self.orm_any.schema.FILE_MAP[self.process_name]
+        file_lookup = self.forest_any.schema.FILE_MAP[self.process_name]
         return {file_alias: file_lookup[file_alias] for file_alias in file_lookup}
 
     @property

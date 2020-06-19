@@ -3,12 +3,12 @@ from typing import List, Callable, Dict, Any, TYPE_CHECKING, Optional
 from dataforest.hyperparams.Sweep import Sweep
 
 if TYPE_CHECKING:
-    from dataforest.ORM import DataForest
+    from dataforest.core.DataForest import DataForest
 
 
 class HyperparameterMethods:
-    def __init__(self, orm: "DataForest"):
-        self.orm = orm
+    def __init__(self, forest: "DataForest"):
+        self.forest = forest
 
     def sweep(
         self,
@@ -20,6 +20,6 @@ class HyperparameterMethods:
         combinatorial: bool = False,
     ):
         """Runs a hyperparameter sweep. See `Sweep` documentation."""
-        sweep = Sweep(self.orm, sweep_dict, combinatorial)
+        sweep = Sweep(self.forest, sweep_dict, combinatorial)
         sweep.run(methods, method_kwargs, skip_if_done, stop_on_error)
         return sweep

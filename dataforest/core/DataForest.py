@@ -1,23 +1,23 @@
 import logging
 from copy import deepcopy
-from pathlib import Path
-from typing import Callable, Dict, Optional, Type
+from typing import Callable, Dict, Optional, Type, Union, Any
 
 import pandas as pd
+from pathlib import Path
 
-from dataforest.BatchMethods import BatchMethods
-from dataforest.DataMap import DataMap
-from dataforest.DataTree import DataTree
-from dataforest.FileIO import FileIO
-from dataforest.PlotMethods import PlotMethods
-from dataforest.ProcessRun import ProcessRun
-from dataforest.ProcessSchema import ProcessSchema
-from dataforest.ReaderMethods import ReaderMethods
-from dataforest.Spec import Spec
-from dataforest.Tree import Tree
-from dataforest.WriterMethods import WriterMethods
+from dataforest.templates.BatchMethods import BatchMethods
+from dataforest.core.DataMap import DataMap
+from dataforest.filesystem.DataTree import DataTree
+from dataforest.filesystem.FileIO import FileIO
+from dataforest.templates.PlotMethods import PlotMethods
+from dataforest.core.ProcessRun import ProcessRun
+from dataforest.templates.ProcessSchema import ProcessSchema
+from dataforest.templates.ReaderMethods import ReaderMethods
+from dataforest.core.Spec import Spec
+from dataforest.filesystem.Tree import Tree
+from dataforest.templates.WriterMethods import WriterMethods
 from dataforest.hyperparams.HyperparameterMethods import HyperparameterMethods
-from dataforest.utils import update_recursive
+from dataforest.utils.utils import update_recursive
 
 
 class DataForest:
@@ -40,10 +40,10 @@ class DataForest:
     >>>         },
     >>>     "process_2": {
     >>>             "alpha": 0.05,    # param
-    >>>             "partition": "type",    # partition
+    >>>             "partition": "treatment",    # partition
     >>>         }
     >>> }
-    >>> orm = DataForest(root_dir, spec)
+    >>> forest = DataForest(root_dir, spec)
 
     Class Attributes:
         SCHEMA_CLASS: Point to a subclass of `ProcessSchema`
@@ -77,7 +77,7 @@ class DataForest:
 
     Attributes:
         data_map (DataMap): list of all existing paths through hierarchical
-            process tree as dicts in `Spec` format.
+            process filesystem as dicts in `Spec` format.
         logger:
         schema:
         spec:
@@ -97,12 +97,17 @@ class DataForest:
     HYPERPARAMETER_METHODS: Type = HyperparameterMethods
     READER_MAP: dict = dict()
     WRITER_MAP: dict = dict()
-    READER_KWARGS_MAP = dict()
-    WRITER_KWARGS_MAP = dict()
-    METADATA_NAME = NotImplementedError("Should be implemented by superclass")
-    COPY_KWARGS = {"root_dir": "root_dir", "spec_dict": "spec", "verbose": "verbose"}
+    READER_KWARGS_MAP: dict = dict()
+    WRITER_KWARGS_MAP: dict = dict()
+    METADATA_NAME: dict = NotImplementedError("Should be implemented by superclass")
+    COPY_KWARGS: dict = {"root_dir": "root_dir", "spec_dict": "spec", "verbose": "verbose"}
 
-    def __init__(self, root_dir, spec_dict=None, verbose=False):
+    def __init__(
+            self,
+            root_dir: Union[str, Path],
+            spec_dict: Optional[Dict[str, Dict[str, Any]]] = None,
+            verbose: bool = False
+    ):
         self._meta = None
         self._unversioned = False
         self.root_dir = Path(root_dir)
@@ -151,17 +156,17 @@ class DataForest:
         that at `process_name`.
 
         Note that `params` are left out since they are specific to
-        `process_name`, and not used to slice or modify data in the `ORM`
+        `process_name`, and not used to slice or modify data in the `DataForest`
         Args:
             process_name: process name under `self.spec` with which to
                 establish uniformity of `self.spec`.
 
         Returns:
-            A spec with an updated ORM which has the aggregate s
+            A spec with an updated DataForest which has the aggregate s
         """
 
         if self.unversioned:
-            self.logger.warning("Calling `at` on unversioned `ORM`")
+            self.logger.warning("Calling `at` on unversioned `DataForest`")
         if process_name not in self.schema.PROCESS_NAMES:
             raise KeyError(f"Invalid process_name: {process_name}. Options: {self.schema.PROCESS_NAMES}")
 
@@ -183,7 +188,7 @@ class DataForest:
         inst = self.copy(spec_dict=dict(spec), meta=meta)
         return inst
 
-    def copy(self, **kwargs):
+    def copy(self, **kwargs) -> "DataForest":
         base_kwargs = self._get_copy_base_kwargs()
         kwargs = {**base_kwargs, **kwargs}
         kwargs = {k: deepcopy(v) for k, v in kwargs.items()}
@@ -191,7 +196,7 @@ class DataForest:
 
     @property
     def meta(self) -> pd.DataFrame:
-        raise NotImplementedError("Should be implemented by superclass")
+        raise NotImplementedError("Should be implemented by subclass")
 
     @property
     def paths(self) -> Dict[str, Path]:
@@ -206,7 +211,7 @@ class DataForest:
             for step in process_chain:
                 if step not in self._process_subpaths:
                     if step not in self._spec_warnings:
-                        self.logger.debug(f"step {step} not specified in `Spec` and will be excluded from ORM")
+                        self.logger.debug(f"step {step} not specified in `Spec` and will be excluded from DataForest")
                         self._spec_warnings.add(step)
                     continue
                 path /= "/".join((step, self._process_subpaths[step]))
@@ -222,15 +227,15 @@ class DataForest:
         return {k: v for k, v in self.spec.items() if k in self.schema.PROCESS_NAMES}
 
     def set_partition(self, process_name: Optional[str] = None, **kwargs):
-        """Get new ORM with recursively updated `partition`"""
-        raise NotImplementedError("This method should be implemented by `ORM` subclasses")
+        """Get new DataForest with recursively updated `partition`"""
+        raise NotImplementedError("This method should be implemented by `DataForest` subclasses")
 
     def get_subset(self, subset_dict: dict) -> "DataForest":
-        """Get new ORM with recursively updated `subset`"""
+        """Get new DataForest with recursively updated `subset`"""
         return self._get_compartment_updated("subset", subset_dict)
 
     def get_filtered(self, filter_dict: dict) -> "DataForest":
-        """Get new ORM with recursively updated `filtered`"""
+        """Get new DataForest with recursively updated `filtered`"""
         return self._get_compartment_updated("filter", filter_dict)
 
     def _subset_filter(
@@ -240,8 +245,8 @@ class DataForest:
         unnecessary_filters = dict()
         # TODO: self._meta starts out as f_cell_metadata with joined and calculated values, then
         #   this properly filters and subsets it
-        # TODO: this is run at the root level during init of orm.meta, but only run with process_names
-        #   during `orm.at`
+        # TODO: this is run at the root level during init of DataForest.meta, but only run with process_names
+        #   during `DataForest.at`
         prev_df = df.copy()
         subset_dict = spec.get_subset_dict(spec, schema, process_name)
         filter_dict = spec.get_filter_dict(spec, process_name)
@@ -267,7 +272,7 @@ class DataForest:
         if len(df) == 0:
             raise ValueError(
                 f"subset and filter resulted in no rows. subset: {subset_dict} and filter: {filter_dict}. Please note "
-                f"that any spaces in `orm.spec` dict should be converted to underscores!"
+                f"that any spaces in `DataForest.spec` dict should be converted to underscores!"
             )
         return df
 
@@ -347,10 +352,10 @@ class DataForest:
     def _map_file_data_properties(self):
         """
         Meta-programming approach to add 3 attributes for each file alias.
-        1. orm.f_{file_alias}: property which accesses reader method if data
+        1. DataForest.f_{file_alias}: property which accesses reader method if data
             isn't already cached, otherwise, accesses cache
-        2. orm.write_{file_alias}: writer method for given `file_alias`
-        3. orm._cache_{file_alias}: stores cached data from `FileIO` after first
+        2. DataForest.write_{file_alias}: writer method for given `file_alias`
+        3. DataForest._cache_{file_alias}: stores cached data from `FileIO` after first
             read
         """
         for file_alias in self._io_map:
@@ -366,7 +371,7 @@ class DataForest:
         """
         Kernel which creates a data access property for a given `file_alias`.
         The property first tries to retrieve cached data, and if there is none,
-        it reads the data from the `reader` at `orm._io_map[file_alias]` and
+        it reads the data from the `reader` at `DataForest._io_map[file_alias]` and
         caches it.
         Args:
             file_alias:
@@ -375,12 +380,12 @@ class DataForest:
 
         """
 
-        def func(orm):
+        def func(forest):
             file_data_cache = f"_cache_{file_alias}"
-            if getattr(orm, file_data_cache) is None:
-                file_io = orm._io_map[file_alias]
-                setattr(orm, file_data_cache, file_io.read())
-            return getattr(orm, file_data_cache)
+            if getattr(forest, file_data_cache) is None:
+                file_io = forest._io_map[file_alias]
+                setattr(forest, file_data_cache, file_io.read())
+            return getattr(forest, file_data_cache)
 
         return property(func)
 

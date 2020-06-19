@@ -1,6 +1,6 @@
 class ProcessMethods:
-    def __init__(self, orm):
-        self.orm = orm
+    def __init__(self, forest):
+        self.forest = forest
 
     """
     Container base class for `staticmethod`s which execute `processes` in a

@@ -1,7 +1,7 @@
 from copy import deepcopy
 from typing import Any, Callable, Optional, Set, Tuple, Union
 
-from dataforest.exceptions import AscensionError, TraversalError
+from dataforest.utils.exceptions import AscensionError, TraversalError
 
 
 class Tree:
@@ -9,19 +9,19 @@ class Tree:
     Tree data structure whose state can be described by a nested dictionary and
     a current node. The dictionary
     Attributes:
-        dict: the nested `dict` which represents the tree structure. It
+        dict: the nested `dict` which represents the filesystem structure. It
             also contains `set`s for a set of leaf nodes when the parents
             children are all leaf nodes. The non-container keys and values can
             be any datatype.
         stack: the series of keys used to access the current location in the
             nested `dict`s and `set`s. Can be thought of as the list of node
-            names to get from the root to the current location in the tree
+            names to get from the root to the current location in the filesystem
     """
 
     def __init__(self, tree: Optional[dict] = None, stack: Optional[list] = None):
         if tree is not None:
             if not isinstance(tree, dict):
-                raise TypeError(f"argument `tree` must be type `dict`, not {type(tree)}")
+                raise TypeError(f"argument `filesystem` must be type `dict`, not {type(tree)}")
         if stack is not None:
             if not isinstance(stack, list):
                 raise TypeError(f"argument `stack` must be type `list`, not {type(stack)}")
@@ -157,7 +157,7 @@ class Tree:
 
     def apply_leaves(self, func: Callable, inplace: bool = False, **kwargs: Any) -> "Tree":
         """
-        Apply a specified function to the leaf nodes of the tree
+        Apply a specified function to the leaf nodes of the filesystem
         Args:
             func: specified function
             inplace: whether to apply to `self` or apply to a copy
@@ -193,9 +193,9 @@ class Tree:
 
     def copy_current_branch(self) -> "Tree":
         """
-        Create a new tree with no nodes other than those in the current stack
+        Create a new filesystem with no nodes other than those in the current stack
         Returns:
-            tree: new tree containing only current branch
+            tree: new filesystem containing only current branch
         """
         tree = self.__class__()
         tree.add_branch(self.stack)

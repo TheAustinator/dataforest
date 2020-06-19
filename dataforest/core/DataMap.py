@@ -1,10 +1,11 @@
 import logging
 import os
-from pathlib import Path
 from typing import List, Optional, Union
 
-from dataforest.DataTree import DataTree
-from dataforest.ProcessSchema import ProcessSchema
+from pathlib import Path
+
+from dataforest.filesystem.DataTree import DataTree
+from dataforest.templates.ProcessSchema import ProcessSchema
 
 
 class DataMap(list):

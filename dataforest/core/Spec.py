@@ -1,20 +1,21 @@
 import json
 from copy import deepcopy
-from pathlib import Path
 from pprint import pprint
 from typing import Set, Union, Optional
 
-from dataforest.DataTree import DataTree
-from dataforest.ProcessSchema import ProcessSchema
-from dataforest.Tree import Tree
-from dataforest.utils import update_recursive
+from pathlib import Path
+
+from dataforest.filesystem.DataTree import DataTree
+from dataforest.templates.ProcessSchema import ProcessSchema
+from dataforest.filesystem.Tree import Tree
+from dataforest.utils.utils import update_recursive
 
 
 class Spec(dict):
     """
-    Base class for specification of path through `process_run` for `ORM` to
-    interface with data. Going deeper into the tree does not limit
-    the `ORM`s ability to interface with data at earlier nodes so long as they
+    Base class for specification of path through `process_run` for `DataForest` to
+    interface with data. Going deeper into the filesystem does not limit
+    the `DataForest`s ability to interface with data at earlier nodes so long as they
     are along the same path.
     Examples:
         {
@@ -36,7 +37,7 @@ class Spec(dict):
         and any downstream processes, but it won't be excluded from any
         upstream data that we want to combine with the `process_2` outputs,
         so the `filter` is also specified at the root level so that it can
-        be excluded either manually or in any data access methods of `ORM`
+        be excluded either manually or in any data access methods of `DataForest`
         subclasses.
     """
 
