@@ -15,12 +15,12 @@ class FileIO:
     """
 
     def __init__(
-            self,
-            filepath: Union[str, Path],
-            reader: Callable,
-            writer: Optional[Callable],
-            reader_kwargs: dict,
-            writer_kwargs: dict,
+        self,
+        filepath: Union[str, Path],
+        reader: Callable,
+        writer: Optional[Callable],
+        reader_kwargs: dict,
+        writer_kwargs: dict,
     ):
         # TODO: handle H5
         self.filepath = filepath

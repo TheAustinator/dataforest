@@ -109,6 +109,8 @@ class DataMap(list):
         operators_in_name = [op for op in DataTree.OPERATORS if op in name]
         if any(operators_in_name):
             rel_path = "/".join(path_elems)
-            self.logger.warning(f"WARNING: Path excluded for breaking alternating process/params pattern: {rel_path}")
+            self.logger.warning(
+                f"WARNING: Path excluded for breaking alternating process/params pattern: {rel_path}"
+            )
             return True
         return False

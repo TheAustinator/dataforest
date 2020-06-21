@@ -5,18 +5,18 @@ from typing import Callable, Dict, Optional, Type, Union, Any
 import pandas as pd
 from pathlib import Path
 
-from dataforest.templates.BatchMethods import BatchMethods
 from dataforest.core.DataMap import DataMap
+from dataforest.core.ProcessRun import ProcessRun
+from dataforest.core.Spec import Spec
 from dataforest.filesystem.DataTree import DataTree
 from dataforest.filesystem.FileIO import FileIO
+from dataforest.filesystem.Tree import Tree
+from dataforest.hyperparams.HyperparameterMethods import HyperparameterMethods
+from dataforest.templates.BatchMethods import BatchMethods
 from dataforest.templates.PlotMethods import PlotMethods
-from dataforest.core.ProcessRun import ProcessRun
 from dataforest.templates.ProcessSchema import ProcessSchema
 from dataforest.templates.ReaderMethods import ReaderMethods
-from dataforest.core.Spec import Spec
-from dataforest.filesystem.Tree import Tree
 from dataforest.templates.WriterMethods import WriterMethods
-from dataforest.hyperparams.HyperparameterMethods import HyperparameterMethods
 from dataforest.utils.utils import update_recursive
 
 
@@ -100,13 +100,18 @@ class DataForest:
     READER_KWARGS_MAP: dict = dict()
     WRITER_KWARGS_MAP: dict = dict()
     METADATA_NAME: dict = NotImplementedError("Should be implemented by superclass")
-    COPY_KWARGS: dict = {"root_dir": "root_dir", "spec_dict": "spec", "verbose": "verbose"}
+    COPY_KWARGS: dict = {
+        "root_dir": "root_dir",
+        "spec_dict": "spec",
+        "verbose": "verbose",
+    }
 
     def __init__(
             self,
             root_dir: Union[str, Path],
             spec_dict: Optional[Dict[str, Dict[str, Any]]] = None,
-            verbose: bool = False
+            verbose: bool = False,
+            config_dir: Optional[Union[str, Path]] = None,
     ):
         self._meta = None
         self._unversioned = False
@@ -128,8 +133,12 @@ class DataForest:
         self._file_tree = Tree(self.SCHEMA_CLASS.FILE_MAP)
         self._reader_kwargs_map = self._file_tree.apply_leaves(lambda x: dict()).dict
         self._writer_kwargs_map = self._file_tree.apply_leaves(lambda x: dict()).dict
-        self._reader_map = self._file_tree.apply_leaves(self._map_default_reader_methods).dict
-        self._writer_map = self._file_tree.apply_leaves(self._map_default_writer_methods).dict
+        self._reader_map = self._file_tree.apply_leaves(
+            self._map_default_reader_methods
+        ).dict
+        self._writer_map = self._file_tree.apply_leaves(
+            self._map_default_writer_methods
+        ).dict
         update_recursive(self._reader_kwargs_map, self.READER_KWARGS_MAP, inplace=True)
         update_recursive(self._writer_kwargs_map, self.WRITER_KWARGS_MAP, inplace=True)
         update_recursive(self._reader_map.update, self.READER_MAP, inplace=True)
@@ -168,7 +177,9 @@ class DataForest:
         if self.unversioned:
             self.logger.warning("Calling `at` on unversioned `DataForest`")
         if process_name not in self.schema.PROCESS_NAMES:
-            raise KeyError(f"Invalid process_name: {process_name}. Options: {self.schema.PROCESS_NAMES}")
+            raise KeyError(
+                f"Invalid process_name: {process_name}. Options: {self.schema.PROCESS_NAMES}"
+            )
 
         spec = self.spec.copy()
         processes = self.schema.process_precursors[process_name] + [process_name]
@@ -181,7 +192,9 @@ class DataForest:
             if "filter" in spec[name]:
                 outer_update = {"filter": spec[name]["filter"]}
             stationary_keys = list(self.schema.param_names[name])  # + ['partition']
-            subset_update = {k: v for k, v in spec[name].items() if k not in stationary_keys}
+            subset_update = {
+                k: v for k, v in spec[name].items() if k not in stationary_keys
+            }
             outer_update = {**outer_update, **subset_update}
             update_recursive(spec, outer_update, inplace=True)
         meta = self._meta if self.unversioned else None
@@ -211,7 +224,9 @@ class DataForest:
             for step in process_chain:
                 if step not in self._process_subpaths:
                     if step not in self._spec_warnings:
-                        self.logger.debug(f"step {step} not specified in `Spec` and will be excluded from DataForest")
+                        self.logger.debug(
+                            f"step {step} not specified in `Spec` and will be excluded from DataForest"
+                        )
                         self._spec_warnings.add(step)
                     continue
                 path /= "/".join((step, self._process_subpaths[step]))
@@ -228,7 +243,9 @@ class DataForest:
 
     def set_partition(self, process_name: Optional[str] = None, **kwargs):
         """Get new DataForest with recursively updated `partition`"""
-        raise NotImplementedError("This method should be implemented by `DataForest` subclasses")
+        raise NotImplementedError(
+            "This method should be implemented by `DataForest` subclasses"
+        )
 
     def get_subset(self, subset_dict: dict) -> "DataForest":
         """Get new DataForest with recursively updated `subset`"""
@@ -239,7 +256,11 @@ class DataForest:
         return self._get_compartment_updated("filter", filter_dict)
 
     def _subset_filter(
-        self, df: pd.DataFrame, spec: Spec, schema: ProcessSchema, process_name: Optional[str] = None
+            self,
+            df: pd.DataFrame,
+            spec: Spec,
+            schema: ProcessSchema,
+            process_name: Optional[str] = None,
     ) -> pd.DataFrame:
         unnecessary_keys = dict()
         unnecessary_filters = dict()
@@ -267,7 +288,9 @@ class DataForest:
         if unnecessary_filters:
             unnecessary_keys.update({"filter": unnecessary_filters})
         if unnecessary_keys:
-            logging.warning(f"Some keys may be unecessary in process : {process_name}: {unnecessary_keys}")
+            logging.warning(
+                f"Some keys may be unecessary in process : {process_name}: {unnecessary_keys}"
+            )
             # raise UnnecessaryKeysError(unnecessary_keys, process_name)
         if len(df) == 0:
             raise ValueError(
@@ -294,8 +317,12 @@ class DataForest:
                 df = df[df[key] != val]
         return df
 
-    def _get_compartment_updated(self, compartment_name: str, update: dict) -> "DataForest":
-        spec_dict = update_recursive(self.spec.copy(), {compartment_name: update}, inplace=False)
+    def _get_compartment_updated(
+            self, compartment_name: str, update: dict
+    ) -> "DataForest":
+        spec_dict = update_recursive(
+            self.spec.copy(), {compartment_name: update}, inplace=False
+        )
         # spec = self.SPEC_CLASS(self.data_map, self.schema, spec_dict)
         return self.copy(spec_dict=spec_dict)
 
@@ -305,7 +332,9 @@ class DataForest:
         Portion of `Spec` which pertains to data specification rather than
         process params
         """
-        return {k: v for k, v in self.spec.items() if k not in self.schema.PROCESS_NAMES}
+        return {
+            k: v for k, v in self.spec.items() if k not in self.schema.PROCESS_NAMES
+        }
 
     def __getitem__(self, process_name: str) -> ProcessRun:
         if process_name not in self._process_runs:
@@ -321,7 +350,9 @@ class DataForest:
         """
         subpaths = dict()
         for process_name, specs in self.process_spec.items():
-            subpaths[process_name] = str(DataTree(specs, self.schema.param_names[process_name]))
+            subpaths[process_name] = str(
+                DataTree(specs, self.schema.param_names[process_name])
+            )
         return subpaths
 
     def _map_file_io(self) -> Dict[str, FileIO]:
@@ -362,7 +393,9 @@ class DataForest:
             file_data_attr = f"f_{file_alias}"
             file_data_write_attr = f"write_{file_alias}"
             file_data_cache = f"_cache_{file_alias}"
-            setattr(self.__class__, file_data_attr, self._build_file_data_kernel(file_alias))
+            setattr(
+                self.__class__, file_data_attr, self._build_file_data_kernel(file_alias)
+            )
             setattr(self, file_data_write_attr, self._io_map[file_alias].writer)
             setattr(self, file_data_cache, None)
 

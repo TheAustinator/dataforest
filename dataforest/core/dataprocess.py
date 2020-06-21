@@ -84,7 +84,9 @@ class dataprocess:
         """Checks that input `ProcessRun` directory exists"""
         if not self.forest.paths[self.requires].exists():
             raise InputDataNotFound(self.forest, self.requires, self.process_name)
-        contains_files = any(list(map(Path.is_file, self.forest.paths[self.requires].iterdir())))
+        contains_files = any(
+            list(map(Path.is_file, self.forest.paths[self.requires].iterdir()))
+        )
         if not contains_files:
             raise InputDataNotFound(self.forest, self.requires, self.process_name)
 

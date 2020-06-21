@@ -82,21 +82,29 @@ class ProcessSchema:
     SUBSET_PROXIES: Dict[str, Tuple[Callable, str]] = dict()
 
     def __init__(
-        self,
-        param_names: Optional[Dict[str, Set[str]]] = None,
-        process_hierarchy: Optional[dict] = None,
-        root_dir: Optional[Union[str, Path]] = None,
-        subset_proxies: Optional[Dict[str, Tuple[Callable, str]]] = None,
+            self,
+            param_names: Optional[Union[str, Path, Union[Dict[str, Set[str]]]]] = None,
+            process_hierarchy: Optional[Union[str, Path, dict]] = None,
+            root_dir: Optional[Union[str, Path]] = None,
+            subset_proxies: Optional[Dict[str, Tuple[Callable, str]]] = None,
+            file_map: Optional[Union[Dict[str, Dict[str, str]], str, Path]] = None,
+            process_names: Optional[Union[str, Path, Set[str]]] = None,
     ):
-        self.param_names = self.PARAM_NAMES.copy()
-        self.process_hierarchy = self.PROCESS_HIERARCHY.copy()
+        self.param_names = (
+            param_names if param_names is not None else self.PARAM_NAMES.copy()
+        )
+        self.process_hierarchy = (
+            process_hierarchy
+            if process_hierarchy is not None
+            else self.PROCESS_HIERARCHY.copy()
+        )
         self.process_precursors = node_lineage_lookup(self.PROCESS_HIERARCHY)
-        self.subset_proxies = self.SUBSET_PROXIES.copy()
-        if param_names is not None:
-            self.param_names = param_names
-        if process_hierarchy is not None:
-            self.process_hierarchy = process_hierarchy
+        self.subset_proxies = (
+            subset_proxies if subset_proxies is not None else self.SUBSET_PROXIES.copy()
+        )
+        self.file_map = file_map if file_map is not None else self.FILE_MAP.copy()
+        self.process_names = (
+            process_names if process_names is not None else self.PROCESS_NAMES.copy()
+        )
         if root_dir is not None:
             self.root_dir = root_dir
-        if subset_proxies is not None:
-            self.subset_proxies = subset_proxies

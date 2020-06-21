@@ -1,5 +1,5 @@
 class ProcessMethods:
-    def __init__(self, forest):
+    def __init__(self, forest: "DataForest"):
         self.forest = forest
 
     """

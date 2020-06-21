@@ -12,7 +12,12 @@ if TYPE_CHECKING:
 class Sweep:
     DEFAULT_SUBPLOT_SIZE = np.array((5, 5))
 
-    def __init__(self, base_forest: "DataForest", sweep_dict: Dict[str, Dict[str, Any]], combinatorial: int = False):
+    def __init__(
+            self,
+            base_forest: "DataForest",
+            sweep_dict: Dict[str, Dict[str, Any]],
+            combinatorial: int = False,
+    ):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.base_forest = base_forest
         self.sweep_dict = sweep_dict

@@ -21,10 +21,14 @@ class Tree:
     def __init__(self, tree: Optional[dict] = None, stack: Optional[list] = None):
         if tree is not None:
             if not isinstance(tree, dict):
-                raise TypeError(f"argument `filesystem` must be type `dict`, not {type(tree)}")
+                raise TypeError(
+                    f"argument `filesystem` must be type `dict`, not {type(tree)}"
+                )
         if stack is not None:
             if not isinstance(stack, list):
-                raise TypeError(f"argument `stack` must be type `list`, not {type(stack)}")
+                raise TypeError(
+                    f"argument `stack` must be type `list`, not {type(stack)}"
+                )
         self.stack = []
         self.dict = dict()
         if tree is not None:
@@ -155,7 +159,9 @@ class Tree:
         """
         raise NotImplementedError()
 
-    def apply_leaves(self, func: Callable, inplace: bool = False, **kwargs: Any) -> "Tree":
+    def apply_leaves(
+            self, func: Callable, inplace: bool = False, **kwargs: Any
+    ) -> "Tree":
         """
         Apply a specified function to the leaf nodes of the filesystem
         Args:
@@ -233,7 +239,9 @@ class Tree:
         paths_list = self._paths_for_compare(self, args)
         return set.difference(paths_list)
 
-    def difference_from_others_intersection(self, *args: Union["Tree", dict]) -> Set[tuple]:
+    def difference_from_others_intersection(
+            self, *args: Union["Tree", dict]
+    ) -> Set[tuple]:
         """
         Paths in `self` which are not in the intersection of `args`.
         """
@@ -362,7 +370,9 @@ class Tree:
         """
         if isinstance(children, (dict, set)):
             if len(children) > 1:
-                raise ValueError(f"Must specify `val` to pop when more than one child node")
+                raise ValueError(
+                    f"Must specify `val` to pop when more than one child node"
+                )
             return list(children)[0]
         else:
             return children
@@ -431,7 +441,9 @@ class Tree:
             self.replace_parent(stack, node)
 
     @staticmethod
-    def _paths_for_compare(*args: Union[dict, "Tree"]) -> Union[Tuple[Set[tuple]], Set[tuple]]:
+    def _paths_for_compare(
+            *args: Union[dict, "Tree"]
+    ) -> Union[Tuple[Set[tuple]], Set[tuple]]:
         """
         Converts all `args` to `Tree`s and all node values to `str`, then
         extracts `Tree.paths` from each.

@@ -44,14 +44,20 @@ class DataTree:
         simple.update(self.params.dict)
         if self.subset:
             if len(self.filter) > 1:
-                raise ValueError(f"Multiple subsets cannot be converted to `simple` format: {self.subset}")
+                raise ValueError(
+                    f"Multiple subsets cannot be converted to `simple` format: {self.subset}"
+                )
             simple.update(self.subset[0].dict)
         if self.filter:
             if len(self.filter) > 1:
-                raise ValueError(f"Multiple filters cannot be converted to `simple` format: {self.filter}")
+                raise ValueError(
+                    f"Multiple filters cannot be converted to `simple` format: {self.filter}"
+                )
             simple.update({"filter": self.filter[0].dict})
         if self.partition:
-            simple.update({"partition": {k for part in self.partition for k in part.dict}})
+            simple.update(
+                {"partition": {k for part in self.partition for k in part.dict}}
+            )
         return simple
 
     @property
@@ -130,7 +136,9 @@ class DataTree:
         elif isinstance(tree, set):
             pass
         else:
-            raise TypeError(f"Tree must be `str`, `set`, or `NoneType`, not {type(tree)}")
+            raise TypeError(
+                f"Tree must be `str`, `set`, or `NoneType`, not {type(tree)}"
+            )
         tree = {key: None for key in tree}
         self._new_tree("partition", tree)
 
@@ -174,7 +182,9 @@ class DataTree:
             del dict_["partition"]
         self.params.dict.update({k: v for k, v in dict_.items() if k in param_names})
         if set(dict_.keys()).difference(param_names):
-            self.subset.append(Tree({k: v for k, v in dict_.items() if k not in param_names}))
+            self.subset.append(
+                Tree({k: v for k, v in dict_.items() if k not in param_names})
+            )
 
     def _build_from_str_list(self, str_list: List[str]):
         """
@@ -223,7 +233,9 @@ class DataTree:
             self.active_tree.add_child(x)
 
     @staticmethod
-    def _list_str_components(dir_name_str: str, sep_chars: Tuple[str, ...] = OPERATORS) -> List[str]:
+    def _list_str_components(
+            dir_name_str: str, sep_chars: Tuple[str, ...] = OPERATORS
+    ) -> List[str]:
         """
         Converts `ForestQuery` directory name string to a list of operators and
         values.
@@ -296,7 +308,9 @@ class DataTree:
         string = self._tree_string(self.params)
         subset_str = "--".join([self._tree_string(branch) for branch in self.subset])
         filter_str = "--!".join([self._tree_string(branch) for branch in self.filter])
-        partition_str = "--@".join([self._tree_string(branch) for branch in self.partition])
+        partition_str = "--@".join(
+            [self._tree_string(branch) for branch in self.partition]
+        )
         if subset_str:
             string += "-" + subset_str
         if filter_str:
