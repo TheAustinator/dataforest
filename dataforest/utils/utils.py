@@ -54,9 +54,7 @@ def node_lineage_lookup(dict_: Dict[Any, Union[dict, set]]) -> Dict[Any, list]:
         nonlocal node_lineage
         for node in sub_dict:
             if node in node_lineage:
-                raise NotImplementedError(
-                    f"No duplicates allowed in process hierarchy: {node}"
-                )
+                raise NotImplementedError(f"No duplicates allowed in process hierarchy: {node}")
             node_lineage[node] = stack.copy()
             val = sub_dict[node]
             if val is None:
@@ -66,9 +64,7 @@ def node_lineage_lookup(dict_: Dict[Any, Union[dict, set]]) -> Dict[Any, list]:
             elif isinstance(val, set):
                 for x in val:
                     if x in node_lineage:
-                        raise ValueError(
-                            f"No duplicates allowed in process hierarchy: {x}"
-                        )
+                        raise ValueError(f"No duplicates allowed in process hierarchy: {x}")
                     node_lineage[x] = stack.copy() + [node]
             else:
                 raise TypeError()
@@ -77,9 +73,7 @@ def node_lineage_lookup(dict_: Dict[Any, Union[dict, set]]) -> Dict[Any, list]:
     return node_lineage
 
 
-def label_df_partitions(
-    df: pd.DataFrame, columns: Any, encodings: bool = False
-) -> pd.DataFrame:
+def label_df_partitions(df: pd.DataFrame, columns: Any, encodings: bool = False) -> pd.DataFrame:
     if not isinstance(columns, (list, tuple, set)):
         columns = (columns,)
     columns = sorted(list(columns))

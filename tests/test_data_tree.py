@@ -13,18 +13,8 @@ def dt_from_str():
 
 def test_from_str(dt_from_str):
     expected = {
-        "subset": [
-            {
-                "normalized": {
-                    "disease": {"disease_1", "disease_2"},
-                    "protocol": {"A", "C"},
-                }
-            }
-        ],
-        "filter": [
-            {"disease": "disease_2", "state": "healthy"},
-            {"experiment": "expt_4"},
-        ],
+        "subset": [{"normalized": {"disease": {"disease_1", "disease_2"}, "protocol": {"A", "C"},}}],
+        "filter": [{"disease": "disease_2", "state": "healthy"}, {"experiment": "expt_4"},],
         "group": [{"disease",}],
     }
     # This fails because of a some dict comparison problem with pytest

@@ -84,24 +84,16 @@ class Spec(dict):
         # TODO: get working
         precursor_dict = schema.process_precursors
         process_spec_dict = {k: v for k, v in spec_dict.items() if k in precursor_dict}
-        process_spec_tree = Tree(process_spec_dict).apply_leaves(
-            str
-        )  # convert keys and values to strings
-        spec_depth = max(
-            [len(precursor_dict[name]) + 1 for name in process_spec_dict] + [0]
-        )
+        process_spec_tree = Tree(process_spec_dict).apply_leaves(str)  # convert keys and values to strings
+        spec_depth = max([len(precursor_dict[name]) + 1 for name in process_spec_dict] + [0])
         if spec_depth == 0:
             return
         isodepth_branches = [branch for branch in data_map if len(branch) == spec_depth]
-        matches = [
-            branch for branch in isodepth_branches if process_spec_tree.issubset(branch)
-        ]
+        matches = [branch for branch in isodepth_branches if process_spec_tree.issubset(branch)]
         match = None
         if not matches:
             pprint(isodepth_branches)
-            raise ValueError(
-                f"No branches matching spec. Available branches of the same depth: {isodepth_branches}"
-            )
+            raise ValueError(f"No branches matching spec. Available branches of the same depth: {isodepth_branches}")
         elif len(matches) == 1:
             match = matches[0]
         else:
@@ -111,9 +103,7 @@ class Spec(dict):
         if match is None:
             variable_paths = Tree(matches[0]).variable_paths(matches[1:])
             pprint(isodepth_branches)
-            raise ValueError(
-                f"Underspecified. Must discriminate between {variable_paths}"
-            )
+            raise ValueError(f"Underspecified. Must discriminate between {variable_paths}")
         self.update(match)
 
     def print(self):
@@ -134,20 +124,14 @@ class Spec(dict):
 
     @staticmethod
     def get_subset_dict(
-        dict_: Union[dict, "Spec"],
-        schema: ProcessSchema,
-        process_name: Optional[str] = None,
+        dict_: Union[dict, "Spec"], schema: ProcessSchema, process_name: Optional[str] = None,
     ):
         if process_name:
             keys_exclude = schema.param_names[process_name]
             dict_ = dict_[process_name]
         else:
             keys_exclude = Spec.get_process_spec_dict(dict_, schema)
-        return {
-            k: v
-            for k, v in dict_.items()
-            if (k not in ("filter", "partition")) and (k not in keys_exclude)
-        }
+        return {k: v for k, v in dict_.items() if (k not in ("filter", "partition")) and (k not in keys_exclude)}
 
     @staticmethod
     def get_filter_dict(dict_: Union[dict, "Spec"], process_name: Optional[str] = None):

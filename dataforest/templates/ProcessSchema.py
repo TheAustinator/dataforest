@@ -90,21 +90,11 @@ class ProcessSchema:
         file_map: Optional[Union[Dict[str, Dict[str, str]], str, Path]] = None,
         process_names: Optional[Union[str, Path, Set[str]]] = None,
     ):
-        self.param_names = (
-            param_names if param_names is not None else self.PARAM_NAMES.copy()
-        )
-        self.process_hierarchy = (
-            process_hierarchy
-            if process_hierarchy is not None
-            else self.PROCESS_HIERARCHY.copy()
-        )
+        self.param_names = param_names if param_names is not None else self.PARAM_NAMES.copy()
+        self.process_hierarchy = process_hierarchy if process_hierarchy is not None else self.PROCESS_HIERARCHY.copy()
         self.process_precursors = node_lineage_lookup(self.PROCESS_HIERARCHY)
-        self.subset_proxies = (
-            subset_proxies if subset_proxies is not None else self.SUBSET_PROXIES.copy()
-        )
+        self.subset_proxies = subset_proxies if subset_proxies is not None else self.SUBSET_PROXIES.copy()
         self.file_map = file_map if file_map is not None else self.FILE_MAP.copy()
-        self.process_names = (
-            process_names if process_names is not None else self.PROCESS_NAMES.copy()
-        )
+        self.process_names = process_names if process_names is not None else self.PROCESS_NAMES.copy()
         if root_dir is not None:
             self.root_dir = root_dir

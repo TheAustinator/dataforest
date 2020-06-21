@@ -65,10 +65,7 @@ class ProcessRun:
         values (Path): paths to files
         """
         file_lookup = self.forest_any.schema.FILE_MAP[self.process_name]
-        return {
-            file_alias: self.path / file_lookup[file_alias]
-            for file_alias in file_lookup
-        }
+        return {file_alias: self.path / file_lookup[file_alias] for file_alias in file_lookup}
 
     @property
     def file_map(self) -> Dict[str, str]:
@@ -84,11 +81,7 @@ class ProcessRun:
         """
         `ProcessRun.file_map` filtered by existence
         """
-        return {
-            alias: filename
-            for alias, filename in self.file_map.items()
-            if (self.path / filename).exists()
-        }
+        return {alias: filename for alias, filename in self.file_map.items() if (self.path / filename).exists()}
 
     @property
     def done(self) -> bool:
@@ -97,9 +90,7 @@ class ProcessRun:
         """
         # TODO: make more robust by adding `DONE_REQUIREMENT_FILES` to `ProcessSchema`
         if self.path.exists():
-            output_file_check = lambda x: not (
-                x.endswith("out") or x.endswith("err") or x.startswith("temp")
-            )
+            output_file_check = lambda x: not (x.endswith("out") or x.endswith("err") or x.startswith("temp"))
             output_files = filter(output_file_check, self.files)
             return len(list(output_files)) > 0
         return False
