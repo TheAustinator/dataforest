@@ -98,7 +98,7 @@ class ProcessRun:
         # TODO: make more robust by adding `DONE_REQUIREMENT_FILES` to `ProcessSchema`
         if self.path.exists():
             output_file_check = lambda x: not (
-                    x.endswith("out") or x.endswith("err") or x.startswith("temp")
+                x.endswith("out") or x.endswith("err") or x.startswith("temp")
             )
             output_files = filter(output_file_check, self.files)
             return len(list(output_files)) > 0

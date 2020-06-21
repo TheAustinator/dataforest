@@ -82,13 +82,13 @@ class ProcessSchema:
     SUBSET_PROXIES: Dict[str, Tuple[Callable, str]] = dict()
 
     def __init__(
-            self,
-            param_names: Optional[Union[str, Path, Union[Dict[str, Set[str]]]]] = None,
-            process_hierarchy: Optional[Union[str, Path, dict]] = None,
-            root_dir: Optional[Union[str, Path]] = None,
-            subset_proxies: Optional[Dict[str, Tuple[Callable, str]]] = None,
-            file_map: Optional[Union[Dict[str, Dict[str, str]], str, Path]] = None,
-            process_names: Optional[Union[str, Path, Set[str]]] = None,
+        self,
+        param_names: Optional[Union[str, Path, Union[Dict[str, Set[str]]]]] = None,
+        process_hierarchy: Optional[Union[str, Path, dict]] = None,
+        root_dir: Optional[Union[str, Path]] = None,
+        subset_proxies: Optional[Dict[str, Tuple[Callable, str]]] = None,
+        file_map: Optional[Union[Dict[str, Dict[str, str]], str, Path]] = None,
+        process_names: Optional[Union[str, Path, Set[str]]] = None,
     ):
         self.param_names = (
             param_names if param_names is not None else self.PARAM_NAMES.copy()

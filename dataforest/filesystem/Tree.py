@@ -160,7 +160,7 @@ class Tree:
         raise NotImplementedError()
 
     def apply_leaves(
-            self, func: Callable, inplace: bool = False, **kwargs: Any
+        self, func: Callable, inplace: bool = False, **kwargs: Any
     ) -> "Tree":
         """
         Apply a specified function to the leaf nodes of the filesystem
@@ -240,7 +240,7 @@ class Tree:
         return set.difference(paths_list)
 
     def difference_from_others_intersection(
-            self, *args: Union["Tree", dict]
+        self, *args: Union["Tree", dict]
     ) -> Set[tuple]:
         """
         Paths in `self` which are not in the intersection of `args`.
@@ -442,7 +442,7 @@ class Tree:
 
     @staticmethod
     def _paths_for_compare(
-            *args: Union[dict, "Tree"]
+        *args: Union[dict, "Tree"]
     ) -> Union[Tuple[Set[tuple]], Set[tuple]]:
         """
         Converts all `args` to `Tree`s and all node values to `str`, then

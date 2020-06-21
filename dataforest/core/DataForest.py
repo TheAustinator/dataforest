@@ -107,11 +107,11 @@ class DataForest:
     }
 
     def __init__(
-            self,
-            root_dir: Union[str, Path],
-            spec_dict: Optional[Dict[str, Dict[str, Any]]] = None,
-            verbose: bool = False,
-            config_dir: Optional[Union[str, Path]] = None,
+        self,
+        root_dir: Union[str, Path],
+        spec_dict: Optional[Dict[str, Dict[str, Any]]] = None,
+        verbose: bool = False,
+        config_dir: Optional[Union[str, Path]] = None,
     ):
         self._meta = None
         self._unversioned = False
@@ -256,11 +256,11 @@ class DataForest:
         return self._get_compartment_updated("filter", filter_dict)
 
     def _subset_filter(
-            self,
-            df: pd.DataFrame,
-            spec: Spec,
-            schema: ProcessSchema,
-            process_name: Optional[str] = None,
+        self,
+        df: pd.DataFrame,
+        spec: Spec,
+        schema: ProcessSchema,
+        process_name: Optional[str] = None,
     ) -> pd.DataFrame:
         unnecessary_keys = dict()
         unnecessary_filters = dict()
@@ -318,7 +318,7 @@ class DataForest:
         return df
 
     def _get_compartment_updated(
-            self, compartment_name: str, update: dict
+        self, compartment_name: str, update: dict
     ) -> "DataForest":
         spec_dict = update_recursive(
             self.spec.copy(), {compartment_name: update}, inplace=False

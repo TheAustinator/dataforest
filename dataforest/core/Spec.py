@@ -134,9 +134,9 @@ class Spec(dict):
 
     @staticmethod
     def get_subset_dict(
-            dict_: Union[dict, "Spec"],
-            schema: ProcessSchema,
-            process_name: Optional[str] = None,
+        dict_: Union[dict, "Spec"],
+        schema: ProcessSchema,
+        process_name: Optional[str] = None,
     ):
         if process_name:
             keys_exclude = schema.param_names[process_name]

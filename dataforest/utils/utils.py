@@ -78,7 +78,7 @@ def node_lineage_lookup(dict_: Dict[Any, Union[dict, set]]) -> Dict[Any, list]:
 
 
 def label_df_partitions(
-        df: pd.DataFrame, columns: Any, encodings: bool = False
+    df: pd.DataFrame, columns: Any, encodings: bool = False
 ) -> pd.DataFrame:
     if not isinstance(columns, (list, tuple, set)):
         columns = (columns,)

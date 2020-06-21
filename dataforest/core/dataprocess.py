@@ -22,14 +22,14 @@ class dataprocess:
     """
 
     def __init__(
-            self,
-            requires: str,
-            comparative: bool = False,
-            overwrite: bool = True,
-            add_setup_hooks: Union[List, Tuple] = (),
-            add_clean_hooks: Union[List, Tuple] = (),
-            setup_hooks: Optional[Union[List, Tuple]] = None,
-            clean_hooks: Optional[Union[List, Tuple]] = None,
+        self,
+        requires: str,
+        comparative: bool = False,
+        overwrite: bool = True,
+        add_setup_hooks: Union[List, Tuple] = (),
+        add_clean_hooks: Union[List, Tuple] = (),
+        setup_hooks: Optional[Union[List, Tuple]] = None,
+        clean_hooks: Optional[Union[List, Tuple]] = None,
     ):
         self.requires = requires
         self.comparative = comparative

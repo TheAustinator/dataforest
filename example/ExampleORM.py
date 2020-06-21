@@ -50,7 +50,7 @@ class CellForest(DataForest):
     COPY_KWARGS = {**DataForest.COPY_KWARGS, "unversioned": "unversioned"}
 
     def __init__(
-            self, root_dir, spec_dict=None, verbose=False, meta=None, unversioned=None
+        self, root_dir, spec_dict=None, verbose=False, meta=None, unversioned=None
     ):
         super().__init__(root_dir, spec_dict, verbose)
         self._counts = None
@@ -168,7 +168,7 @@ class CellForest(DataForest):
         return self.__class__(**kwargs)
 
     def _get_compartment_updated(
-            self, compartment_name: str, update: dict
+        self, compartment_name: str, update: dict
     ) -> "CellForest":
         if compartment_name in self.ROOT_LEVEL_COMPARTMENTS:
             spec = update_recursive(self.spec, update, inplace=False)

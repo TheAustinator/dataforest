@@ -234,7 +234,7 @@ class DataTree:
 
     @staticmethod
     def _list_str_components(
-            dir_name_str: str, sep_chars: Tuple[str, ...] = OPERATORS
+        dir_name_str: str, sep_chars: Tuple[str, ...] = OPERATORS
     ) -> List[str]:
         """
         Converts `ForestQuery` directory name string to a list of operators and
