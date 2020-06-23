@@ -12,6 +12,7 @@ from dataforest.filesystem.DataTree import DataTree
 from dataforest.filesystem.FileIO import FileIO
 from dataforest.filesystem.Tree import Tree
 from dataforest.hyperparams.HyperparameterMethods import HyperparameterMethods
+from dataforest.structures import FileCacheDict
 from dataforest.templates.BatchMethods import BatchMethods
 from dataforest.templates.PlotMethods import PlotMethods
 from dataforest.templates.ProcessSchema import ProcessSchema
@@ -120,6 +121,7 @@ class DataForest:
         # TODO log file operations if verbose
         self.logger = logging.getLogger(self.__class__.__name__)
         self._spec_warnings = set()
+        self.f = FileCacheDict()
         self.plot = self.PLOT_METHODS(self)
         self.hyper = HyperparameterMethods(self)
         self.schema = self.SCHEMA_CLASS()
@@ -364,15 +366,18 @@ class DataForest:
             read
         """
         for file_alias in self._io_map:
-            file_data_attr = f"f_{file_alias}"
+            # file_data_attr = f"f_{file_alias}"
             file_data_write_attr = f"write_{file_alias}"
             file_data_cache = f"_cache_{file_alias}"
-            setattr(self.__class__, file_data_attr, self._build_file_data_kernel(file_alias))
+            self.f[file_alias] = self._io_map[file_alias]
+            # self.f[file_alias] = self._build_file_data_kernel(file_alias)
+            # setattr(self.__class__, file_data_attr, self._build_file_data_kernel(file_alias))
             setattr(self, file_data_write_attr, self._io_map[file_alias].writer)
             setattr(self, file_data_cache, None)
 
     @staticmethod
-    def _build_file_data_kernel(file_alias: str) -> property:
+    def _build_file_data_kernel(file_alias: str) -> callable:
+        # TODO: maybe can delete this
         """
         Kernel which creates a data access property for a given `file_alias`.
         The property first tries to retrieve cached data, and if there is none,
@@ -392,7 +397,7 @@ class DataForest:
                 setattr(forest, file_data_cache, file_io.read())
             return getattr(forest, file_data_cache)
 
-        return property(func)
+        return func
 
     def _map_default_reader_methods(self, filename: str) -> Optional[Callable]:
         """

@@ -10,6 +10,10 @@ if TYPE_CHECKING:
 
 
 class Sweep:
+    """
+
+    """
+
     DEFAULT_SUBPLOT_SIZE = np.array((5, 5))
 
     def __init__(

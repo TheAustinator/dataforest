@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any, Dict, Union
+from typing import Any, Dict, Union, Optional
 
 import pandas as pd
 
@@ -61,13 +61,15 @@ def node_lineage_lookup(dict_: Dict[Any, Union[dict, set]]) -> Dict[Any, list]:
                 continue
             elif isinstance(val, dict):
                 _helper(val, stack.copy() + [node])
-            elif isinstance(val, set):
+            elif isinstance(val, (list, set)):
+                if isinstance(val, list):
+                    print("WARNING: lists of nodes, as opposed to sets, have not been tested")
                 for x in val:
                     if x in node_lineage:
                         raise ValueError(f"No duplicates allowed in process hierarchy: {x}")
                     node_lineage[x] = stack.copy() + [node]
             else:
-                raise TypeError()
+                raise TypeError("each value in `dict_` must be of type: (`NoneType`, `dict`, `list`, `set`")
 
     _helper(dict_, [])
     return node_lineage
