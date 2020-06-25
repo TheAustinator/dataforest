@@ -1,6 +1,6 @@
 import logging
 from copy import deepcopy
-from typing import Callable, Dict, Optional, Type, Union, Any
+from typing import Callable, Dict, Optional, Type, Union, Any, List
 
 import pandas as pd
 from pathlib import Path
@@ -15,6 +15,7 @@ from dataforest.hyperparams.HyperparameterMethods import HyperparameterMethods
 from dataforest.structures import FileCacheDict
 from dataforest.templates.BatchMethods import BatchMethods
 from dataforest.templates.PlotMethods import PlotMethods
+from dataforest.templates.ProcessMethods import ProcessMethods
 from dataforest.templates.ProcessSchema import ProcessSchema
 from dataforest.templates.ReaderMethods import ReaderMethods
 from dataforest.templates.WriterMethods import WriterMethods
@@ -89,11 +90,12 @@ class DataForest:
         _writer_map:
     """
 
+    PLOT_METHODS: Type = PlotMethods
+    PROCESS_METHODS: Type = ProcessMethods
     SCHEMA_CLASS: Type = ProcessSchema
     SPEC_CLASS: Type = Spec
     READER_METHODS: Type = ReaderMethods
     WRITER_METHODS: Type = WriterMethods
-    PLOT_METHODS: Type = PlotMethods
     BATCH_METHODS: Type = BatchMethods
     HYPERPARAMETER_METHODS: Type = HyperparameterMethods
     READER_MAP: dict = dict()
@@ -123,6 +125,7 @@ class DataForest:
         self._spec_warnings = set()
         self.f = FileCacheDict()
         self.plot = self.PLOT_METHODS(self)
+        self.process = self.PROCESS_METHODS(self)
         self.hyper = HyperparameterMethods(self)
         self.schema = self.SCHEMA_CLASS()
         self.data_map = DataMap(self.root_dir, self.schema)
@@ -144,6 +147,32 @@ class DataForest:
         self._io_map = self._map_file_io()
         self._map_file_data_properties()
         self._process_runs = dict()
+
+    @classmethod
+    def from_input_dirs(
+        cls,
+        root_dir: Union[str, Path],
+        metadata: Optional[pd.DataFrame] = None,
+        input_dirs: Optional[List[Union[str, Path]]] = None,
+        **kwargs,
+    ) -> "DataForest":
+        """
+        Combines multiple datasets into a root directory, which will be the
+        basis for downstream analysis. Then a DataForest is instantiated.
+        The input directories are specified either via
+        Args:
+            input_dirs: list of input data directories
+            root_dir: root directory to deposit combined files
+            metadata: path to metadata, where each row corresponds to a
+                single dataset from `input_dirs`. The only column which must
+                be present is `path`, which must be matched to the elements of
+                `input_dirs`
+        """
+
+        if (input_dirs and metadata) or (input_dirs is None and metadata is None):
+            raise ValueError("Must specify exactly one of `input_dirs` or `metadata`")
+        cls._combine_datasets(root_dir, metadata, input_dirs)
+        return cls(root_dir, **kwargs)
 
     def at(self, process_name: str) -> "DataForest":
         """
@@ -244,6 +273,14 @@ class DataForest:
     def get_filtered(self, filter_dict: dict) -> "DataForest":
         """Get new DataForest with recursively updated `filtered`"""
         return self._get_compartment_updated("filter", filter_dict)
+
+    @staticmethod
+    def _combine_datasets(
+        root_dir: Union[str, Path],
+        metadata: Optional[str, Path] = None,
+        input_dirs: Optional[List[Union[str, Path]]] = None,
+    ):
+        raise NotImplementedError("Must be implemented by subclass")
 
     def _subset_filter(
         self, df: pd.DataFrame, spec: Spec, schema: ProcessSchema, process_name: Optional[str] = None,

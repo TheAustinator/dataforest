@@ -139,3 +139,9 @@ class Spec(dict):
             return dict_[process_name].get("filter", dict())
         else:
             return dict_.get("filter", dict())
+
+    def __getitem__(self, item):
+        try:
+            return super().__getitem__(item)
+        except KeyError:
+            raise KeyError(f"Process `{item}` not in spec root level keys: {self.keys()}")
