@@ -1,4 +1,4 @@
-<p align="center"><img width=80% src="https://raw.githubusercontent.com/theaustinator/dataforest/master/static/dataforest.png" alt="dataforest"></p>
+<p align="center"><img width=80% src="https://raw.githubusercontent.com/theaustinator/dataforest/master/static/dataforest.jpg" alt="dataforest"></p>
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 ![Python](https://img.shields.io/badge/python-v3.6+-blue.svg)
