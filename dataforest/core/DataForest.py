@@ -120,7 +120,7 @@ class DataForest:
         self._unversioned = False
         self.root_dir = Path(root_dir)
         self.verbose = verbose
-        # TODO log file operations if verbose
+        # TODO: log file operations if verbose
         self.logger = logging.getLogger(self.__class__.__name__)
         self._spec_warnings = set()
         self.f = FileCacheDict()
