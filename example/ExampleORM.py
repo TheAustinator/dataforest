@@ -46,8 +46,8 @@ class CellForest(DataForest):
         "cluster": {"clusters": {"index_col": 0}},
         "diffexp": {"diffexp_result": {"header": 0}},
     }
-    METADATA_NAME = "meta"
-    COPY_KWARGS = {**DataForest.COPY_KWARGS, "unversioned": "unversioned"}
+    _METADATA_NAME = "meta"
+    _COPY_KWARGS = {**DataForest._COPY_KWARGS, "unversioned": "unversioned"}
 
     def __init__(self, root_dir, spec_dict=None, verbose=False, meta=None, unversioned=None):
         super().__init__(root_dir, spec_dict, verbose)

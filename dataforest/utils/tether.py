@@ -11,11 +11,20 @@ def get_methods(obj):
     return method_list
 
 
-def tether(obj, tether_attr):
+def tether(obj, tether_attr, incl_methods=None, excl_methods=None):
     """Tether a static method to a class instance"""
+    if incl_methods and excl_methods:
+        ValueError("Cannot specify both `incl_methods` and `excl_methods`")
     tether_arg = getattr(obj, tether_attr)
     method_list = get_methods(obj)
+    if excl_methods:
+        method_list = [m for m in method_list if m not in excl_methods]
+    elif incl_methods:
+        method_list = incl_methods
     for method_name in method_list:
         method = getattr(obj, method_name)
-        tethered_method = lambda: method(tether_arg)
+
+        def tethered_method(*args, **kwargs):
+            return method(tether_arg, *args, **kwargs)
+
         setattr(obj, method_name, tethered_method)

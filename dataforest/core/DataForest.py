@@ -102,8 +102,8 @@ class DataForest:
     WRITER_MAP: dict = dict()
     READER_KWARGS_MAP: dict = dict()
     WRITER_KWARGS_MAP: dict = dict()
-    METADATA_NAME: dict = NotImplementedError("Should be implemented by superclass")
-    COPY_KWARGS: dict = {
+    _METADATA_NAME: dict = NotImplementedError("Should be implemented by superclass")
+    _COPY_KWARGS: dict = {
         "root_dir": "root_dir",
         "spec_dict": "spec",
         "verbose": "verbose",
@@ -123,7 +123,8 @@ class DataForest:
         # TODO: log file operations if verbose
         self.logger = logging.getLogger(self.__class__.__name__)
         self._spec_warnings = set()
-        self.f = FileCacheDict()
+        self.f = dict()
+        self.w = dict()
         self.plot = self.PLOT_METHODS(self)
         self.process = self.PROCESS_METHODS(self)
         self.hyper = HyperparameterMethods(self)
@@ -152,8 +153,8 @@ class DataForest:
     def from_input_dirs(
         cls,
         root_dir: Union[str, Path],
-        metadata: Optional[pd.DataFrame] = None,
-        input_dirs: Optional[List[Union[str, Path]]] = None,
+        input_paths: Optional[List[Union[str, Path]]] = None,
+        mode: Optional[str] = None,
         **kwargs,
     ) -> "DataForest":
         """
@@ -161,17 +162,30 @@ class DataForest:
         basis for downstream analysis. Then a DataForest is instantiated.
         The input directories are specified either via
         Args:
-            input_dirs: list of input data directories
+            input_paths: list of input data directories
+            root_dir: root directory to deposit combined files
+        """
+        additional_kwargs = cls._combine_datasets(root_dir, input_paths=input_paths, mode=mode)
+        kwargs = {**additional_kwargs, **kwargs}
+        return cls(root_dir, **kwargs)
+
+    @classmethod
+    def from_metadata(
+        cls, root_dir: Union[str, Path], metadata: Optional[pd.DataFrame] = None, **kwargs,
+    ) -> "DataForest":
+        """
+        Combines multiple datasets into a root directory, which will be the
+        basis for downstream analysis. Then a DataForest is instantiated.
+        The input directories are specified either via
+        Args:
             root_dir: root directory to deposit combined files
             metadata: path to metadata, where each row corresponds to a
                 single dataset from `input_dirs`. The only column which must
                 be present is `path`, which must be matched to the elements of
                 `input_dirs`
         """
-
-        if (input_dirs and metadata) or (input_dirs is None and metadata is None):
-            raise ValueError("Must specify exactly one of `input_dirs` or `metadata`")
-        cls._combine_datasets(root_dir, metadata, input_dirs)
+        additional_kwargs = cls._combine_datasets(root_dir, metadata=metadata)
+        kwargs = {**additional_kwargs, **kwargs}
         return cls(root_dir, **kwargs)
 
     def at(self, process_name: str) -> "DataForest":
@@ -243,6 +257,7 @@ class DataForest:
         data_paths = {}
         for process, precursors in self.schema.process_precursors.items():
             path = self.root_dir
+            data_paths["root"] = path
             process_chain = precursors + [process]
             for step in process_chain:
                 if step not in self._process_subpaths:
@@ -277,8 +292,9 @@ class DataForest:
     @staticmethod
     def _combine_datasets(
         root_dir: Union[str, Path],
-        metadata: Optional[str, Path] = None,
-        input_dirs: Optional[List[Union[str, Path]]] = None,
+        metadata: Optional[Union[str, Path]] = None,
+        input_paths: Optional[List[Union[str, Path]]] = None,
+        mode: Optional[str] = None,
     ):
         raise NotImplementedError("Must be implemented by subclass")
 
@@ -368,7 +384,7 @@ class DataForest:
             subpaths[process_name] = str(DataTree(specs, self.schema.param_names[process_name]))
         return subpaths
 
-    def _map_file_io(self) -> Dict[str, FileIO]:
+    def _map_file_io(self) -> Dict[str, Dict[str, FileIO]]:
         """
         Assigns a `FilIO` to each file specified in `self.schema.FILE_MAP`.
         Each `FileIO` is assigned a `reader` and a `writer` based on
@@ -381,8 +397,10 @@ class DataForest:
         Returns:
             io_map: lookup with `file_alias` keys and `FileIO` values
         """
+        # TODO: ME update docstring to reflect addition of process layer
         io_map = dict()
         for process_name, file_dict in self.schema.FILE_MAP.items():
+            io_map[process_name] = dict()
             for file_alias, filename in file_dict.items():
                 filepath = self.paths[process_name] / filename
                 reader = self._reader_map[process_name][file_alias]
@@ -390,7 +408,7 @@ class DataForest:
                 reader_kwargs = self._reader_kwargs_map[process_name][file_alias]
                 writer_kwargs = self._writer_kwargs_map[process_name][file_alias]
                 file_io = FileIO(filepath, reader, writer, reader_kwargs, writer_kwargs)
-                io_map[file_alias] = file_io
+                io_map[process_name][file_alias] = file_io
         return io_map
 
     def _map_file_data_properties(self):
@@ -402,39 +420,14 @@ class DataForest:
         3. DataForest._cache_{file_alias}: stores cached data from `FileIO` after first
             read
         """
-        for file_alias in self._io_map:
-            # file_data_attr = f"f_{file_alias}"
-            file_data_write_attr = f"write_{file_alias}"
-            file_data_cache = f"_cache_{file_alias}"
-            self.f[file_alias] = self._io_map[file_alias]
-            # self.f[file_alias] = self._build_file_data_kernel(file_alias)
-            # setattr(self.__class__, file_data_attr, self._build_file_data_kernel(file_alias))
-            setattr(self, file_data_write_attr, self._io_map[file_alias].writer)
-            setattr(self, file_data_cache, None)
-
-    @staticmethod
-    def _build_file_data_kernel(file_alias: str) -> callable:
-        # TODO: maybe can delete this
-        """
-        Kernel which creates a data access property for a given `file_alias`.
-        The property first tries to retrieve cached data, and if there is none,
-        it reads the data from the `reader` at `DataForest._io_map[file_alias]` and
-        caches it.
-        Args:
-            file_alias:
-
-        Returns:
-
-        """
-
-        def func(forest):
-            file_data_cache = f"_cache_{file_alias}"
-            if getattr(forest, file_data_cache) is None:
-                file_io = forest._io_map[file_alias]
-                setattr(forest, file_data_cache, file_io.read())
-            return getattr(forest, file_data_cache)
-
-        return func
+        for process_name, process_io_map in self._io_map.items():
+            self.f[process_name] = FileCacheDict()
+            self.w[process_name] = dict()
+            for file_alias in process_io_map:
+                # file_data_write_attr = f"write_{file_alias}"
+                # file_data_cache = f"_cache_{file_alias}"
+                self.f[process_name][file_alias] = self._io_map[process_name][file_alias]
+                self.w[process_name][file_alias] = self._io_map[process_name][file_alias].writer
 
     def _map_default_reader_methods(self, filename: str) -> Optional[Callable]:
         """
@@ -477,4 +470,4 @@ class DataForest:
             return None
 
     def _get_copy_base_kwargs(self):
-        return {k: getattr(self, v) for k, v in self.COPY_KWARGS.items()}
+        return {k: getattr(self, v) for k, v in self._COPY_KWARGS.items()}

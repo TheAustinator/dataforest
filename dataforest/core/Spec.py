@@ -144,4 +144,4 @@ class Spec(dict):
         try:
             return super().__getitem__(item)
         except KeyError:
-            raise KeyError(f"Process `{item}` not in spec root level keys: {self.keys()}")
+            raise KeyError(f"Process `{item}` not in spec root level keys: {list(self.keys())}")
