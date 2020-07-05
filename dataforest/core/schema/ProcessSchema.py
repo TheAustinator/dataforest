@@ -2,13 +2,14 @@ from typing import Callable, Dict, Optional, Set, Tuple, Union
 
 from pathlib import Path
 
+from dataforest.core.schema.MetaProcessSchema import MetaProcessSchema
 from dataforest.utils.utils import node_lineage_lookup
 
 
-class ProcessSchema:
+class ProcessSchema(metaclass=MetaProcessSchema):
     """
     Descriptor base class for a hierarchical system of processes. Child classes
-    are to specify the process schema by overloading the class attributes, and
+    are to specify the processes schema by overloading the class attributes, and
     needn't add anything else.
 
     Class Attributes:
@@ -26,7 +27,7 @@ class ProcessSchema:
                 {"process_1": {"alpha", "bias", ...},
                  ...}
 
-        PROCESS_HIERARCHY: a nested `dict` which represents the process
+        PROCESS_HIERARCHY: a nested `dict` which represents the processes
             hierarchy. Sibling nodes which have the same child processes
             are represented as `tuple`s, and a level in which all sibling nodes
             are leaves is represented as a `set`.
@@ -75,12 +76,6 @@ class ProcessSchema:
         subset_proxies:
     """
 
-    FILE_MAP: Dict[str, Dict[str, str]] = dict()
-    PARAM_NAMES: Dict[str, Set[str]] = dict()
-    PROCESS_HIERARCHY: dict = dict()
-    PROCESS_NAMES: Set[str] = set()
-    SUBSET_PROXIES: Dict[str, Tuple[Callable, str]] = dict()
-
     def __init__(
         self,
         param_names: Optional[Union[str, Path, Union[Dict[str, Set[str]]]]] = None,
@@ -90,11 +85,13 @@ class ProcessSchema:
         file_map: Optional[Union[Dict[str, Dict[str, str]], str, Path]] = None,
         process_names: Optional[Union[str, Path, Set[str]]] = None,
     ):
-        self.param_names = param_names if param_names is not None else self.PARAM_NAMES.copy()
-        self.process_hierarchy = process_hierarchy if process_hierarchy is not None else self.PROCESS_HIERARCHY.copy()
-        self.process_precursors = node_lineage_lookup(self.PROCESS_HIERARCHY)
-        self.subset_proxies = subset_proxies if subset_proxies is not None else self.SUBSET_PROXIES.copy()
-        self.file_map = file_map if file_map is not None else self.FILE_MAP.copy()
-        self.process_names = process_names if process_names is not None else self.PROCESS_NAMES.copy()
+        self.param_names = param_names if param_names is not None else self.__class__.PARAM_NAMES.copy()
+        self.process_hierarchy = (
+            process_hierarchy if process_hierarchy is not None else self.__class__.PROCESS_HIERARCHY.copy()
+        )
+        self.process_precursors = node_lineage_lookup(self.__class__.PROCESS_HIERARCHY)
+        self.subset_proxies = subset_proxies if subset_proxies is not None else self.__class__.SUBSET_PROXIES.copy()
+        self.file_map = file_map if file_map is not None else self.__class__.FILE_MAP.copy()
+        self.process_names = process_names if process_names is not None else self.__class__.PROCESS_NAMES.copy()
         if root_dir is not None:
             self.root_dir = root_dir

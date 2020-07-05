@@ -1,3 +1,8 @@
+import logging
+import traceback
+from typing import Dict
+
+
 class TraversalError(ValueError):
     def __init__(self, tree, stack):
         self._tree = tree
@@ -37,3 +42,19 @@ class UnnecessaryKeysError(KeyError):
         else:
             str_ = f"Unnecessary key(s) "
         return str_ + end_str
+
+
+class HookException(Exception):
+    def __init__(self, process_name: str, child_exceptions: Dict[str, Exception]):
+        self.process_name = process_name
+        self.child_exceptions = child_exceptions
+
+    def __str__(self):
+        str_ = str(self.child_exceptions)
+        for i, (hook_name, e) in enumerate(self.child_exceptions.items()):
+            str_ += "\n\n" + f"HOOK EXCEPTION {i} ({self.process_name}): {hook_name}"
+            str_ += "\n" + str(e)
+            str_ += "\n" + "\n".join(traceback.format_tb(e.__traceback__))
+            if hasattr(e, "characters_written"):
+                str_ += "\n" + e.characters_written
+        return str_

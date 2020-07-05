@@ -1,0 +1,13 @@
+---
+hook_sources:
+  - dataforest.hooks
+setup_hooks:
+  - hook_comparative
+  - hook_input_exists
+  - hook_mkdirs
+clean_hooks:
+  - hook_garbage_collection
+dataprocess_default_attrs:
+  placeholder: null
+
+process_sources:

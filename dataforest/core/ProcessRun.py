@@ -6,7 +6,7 @@ import pandas as pd
 from pathlib import Path
 from termcolor import cprint
 
-from dataforest.filesystem.DataTree import DataTree
+from dataforest.filesystem.core.DataTree import DataTree
 
 if TYPE_CHECKING:
     from dataforest.core.DataForest import DataForest
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class ProcessRun:
     """
     Interface to the files, status, logs, and DataForest at a node representing a run
-    of a specific process.
+    of a specific processes.
     """
 
     def __init__(self, forest: "DataForest", process_name: str):
@@ -46,7 +46,7 @@ class ProcessRun:
 
     @property
     def path(self) -> Path:
-        """Path to directory containing process output files and logs"""
+        """Path to directory containing processes output files and logs"""
         return self.forest_any.paths[self.process_name]
 
     @property
@@ -61,20 +61,18 @@ class ProcessRun:
     @property
     def path_map(self) -> Dict[str, Path]:
         """
-        keys (str): process `file_alias`es (defined in `ProcessSchema`)
+        keys (str): processes `file_alias`es (defined in `ProcessSchema`)
         values (Path): paths to files
         """
-        file_lookup = self.forest_any.schema.FILE_MAP[self.process_name]
-        return {file_alias: self.path / file_lookup[file_alias] for file_alias in file_lookup}
+        return {file_alias: self.path / self._file_lookup[file_alias] for file_alias in self._file_lookup}
 
     @property
     def file_map(self) -> Dict[str, str]:
         """
-        keys: process `file_alias`es (defined in `ProcessSchema`)
+        keys: processes `file_alias`es (defined in `ProcessSchema`)
         values: filenames
         """
-        file_lookup = self.forest_any.schema.FILE_MAP[self.process_name]
-        return {file_alias: file_lookup[file_alias] for file_alias in file_lookup}
+        return {file_alias: self._file_lookup[file_alias] for file_alias in self._file_lookup}
 
     @property
     def file_map_done(self) -> Dict[str, str]:
@@ -107,7 +105,7 @@ class ProcessRun:
         stdouts = list(filter(lambda x: str(x).endswith(".out"), self.filepaths))
         stderrs = list(filter(lambda x: str(x).endswith(".err"), self.filepaths))
         if (len(stdouts) == 0) and (len(stderrs) == 0):
-            raise ValueError(f"No logs for process: {self.process_name}")
+            raise ValueError(f"No logs for processes: {self.process_name}")
         for stdout in stdouts:
             name = str(stdout.name).split(".out")[0]
             cprint(f"STDOUT: {name}", "cyan", "on_grey")
@@ -128,3 +126,10 @@ class ProcessRun:
         run_dicts = map(DataTree.from_str, run_dirs)
         df = pd.DataFrame(run_dicts)
         return df
+
+    @property
+    def _file_lookup(self):
+        file_lookup = self.forest_any.schema.__class__.FILE_MAP[self.process_name]
+        standard_files = self.forest_any.schema.__class__.STANDARD_FILES
+        file_lookup.update(standard_files)
+        return file_lookup

@@ -1,6 +1,6 @@
 import logging
 from copy import deepcopy
-from typing import Callable, Dict, Optional, Type, Union, Any, List
+from typing import Callable, Dict, Optional, Type, Union, Any, List, Iterable
 
 import pandas as pd
 from pathlib import Path
@@ -8,17 +8,18 @@ from pathlib import Path
 from dataforest.core.DataMap import DataMap
 from dataforest.core.ProcessRun import ProcessRun
 from dataforest.core.Spec import Spec
-from dataforest.filesystem.DataTree import DataTree
-from dataforest.filesystem.FileIO import FileIO
-from dataforest.filesystem.Tree import Tree
+from dataforest.filesystem.core.DataTree import DataTree
+from dataforest.filesystem.core.FileIO import FileIO
+from dataforest.filesystem.core.Tree import Tree
 from dataforest.hyperparams.HyperparameterMethods import HyperparameterMethods
 from dataforest.structures import FileCacheDict
-from dataforest.templates.BatchMethods import BatchMethods
-from dataforest.templates.PlotMethods import PlotMethods
-from dataforest.templates.ProcessMethods import ProcessMethods
-from dataforest.templates.ProcessSchema import ProcessSchema
-from dataforest.templates.ReaderMethods import ReaderMethods
-from dataforest.templates.WriterMethods import WriterMethods
+from dataforest.processes.core.BatchMethods import BatchMethods
+from dataforest.plot.PlotMethods import PlotMethods
+from dataforest.processes.core.ProcessMethods import ProcessMethods
+from dataforest.core.schema.ProcessSchema import ProcessSchema
+from dataforest.filesystem.io import ReaderMethods
+from dataforest.filesystem.io.WriterMethods import WriterMethods
+from dataforest.utils.loaders.update_config import update_config
 from dataforest.utils.utils import update_recursive
 
 
@@ -26,7 +27,7 @@ class DataForest:
     """
     Core interface for package, which is used to access hierarchical data
     output by chains of processes, whose `process_run`s can be described by the
-    process `params` and input data. At the root level process, the input data
+    processes `params` and input data. At the root level processes, the input data
     is specified by `params`, and in subsequent processes, the input data is
     specified by `subset`s, `filter`s, and `partition`s derived from that initial
     data. `subset`s specify criteria for inclusion, `filter`s specify criteria
@@ -79,7 +80,7 @@ class DataForest:
 
     Attributes:
         data_map (DataMap): list of all existing paths through hierarchical
-            process filesystem as dicts in `Spec` format.
+            processes filesystem as dicts in `Spec` format.
         logger:
         schema:
         spec:
@@ -108,14 +109,19 @@ class DataForest:
         "spec_dict": "spec",
         "verbose": "verbose",
     }
+    _DEFAULT_CONFIG = Path(__file__).parent / "config/default_config.yaml"
 
     def __init__(
         self,
         root_dir: Union[str, Path],
         spec_dict: Optional[Dict[str, Dict[str, Any]]] = None,
         verbose: bool = False,
-        config_dir: Optional[Union[str, Path]] = None,
+        config: Optional[Union[dict, str, Path]] = None,
     ):
+        if config is not None:
+            update_config(config)
+        else:
+            update_config(self._DEFAULT_CONFIG)
         self._meta = None
         self._unversioned = False
         self.root_dir = Path(root_dir)
@@ -136,7 +142,7 @@ class DataForest:
             self.spec = spec_dict
         else:
             self.spec = self.SPEC_CLASS(self.data_map, self.schema, spec_dict)
-        self._file_tree = Tree(self.SCHEMA_CLASS.FILE_MAP)
+        self._file_tree = Tree(self.schema.__class__.FILE_MAP)
         self._reader_kwargs_map = self._file_tree.apply_leaves(lambda x: dict()).dict
         self._writer_kwargs_map = self._file_tree.apply_leaves(lambda x: dict()).dict
         self._reader_map = self._file_tree.apply_leaves(self._map_default_reader_methods).dict
@@ -150,10 +156,14 @@ class DataForest:
         self._process_runs = dict()
 
     @classmethod
+    def load(cls, root_dir, **kwargs):
+        return cls(root_dir, **kwargs)
+
+    @classmethod
     def from_input_dirs(
         cls,
         root_dir: Union[str, Path],
-        input_paths: Optional[List[Union[str, Path]]] = None,
+        input_paths: Optional[Union[str, Path, Iterable[Union[str, Path]]]] = None,
         mode: Optional[str] = None,
         **kwargs,
     ) -> "DataForest":
@@ -165,6 +175,8 @@ class DataForest:
             input_paths: list of input data directories
             root_dir: root directory to deposit combined files
         """
+        if not isinstance(input_paths, (list, tuple)):
+            input_paths = [input_paths]
         additional_kwargs = cls._combine_datasets(root_dir, input_paths=input_paths, mode=mode)
         kwargs = {**additional_kwargs, **kwargs}
         return cls(root_dir, **kwargs)
@@ -193,14 +205,14 @@ class DataForest:
         There can be multiple specifications for `subset`, `filter`, and
         `partition` under different `process_name`s in `self.spec`, and also
         at the root level (at the base level of `self.spec`). When running a
-        particular process, specifications for that process may occur
+        particular processes, specifications for that processes may occur
         both/either at `process_name` and/or at root. To account for either
         case, we want to aggregate these.
 
         This method establishes uniformity of `subset`, `filter`, and
         `partition` in `self.spec` between root level and `process_name`.
         First, the entries for `process_name` are updated from the root level,
-        then the root level is updated from the process name. If there are no
+        then the root level is updated from the processes name. If there are no
         conflicting keys between root and `process_name`, this order doesn't
         matter, but in the case of conflicts, the value at root will overwrite
         that at `process_name`.
@@ -208,7 +220,7 @@ class DataForest:
         Note that `params` are left out since they are specific to
         `process_name`, and not used to slice or modify data in the `DataForest`
         Args:
-            process_name: process name under `self.spec` with which to
+            process_name: processes name under `self.spec` with which to
                 establish uniformity of `self.spec`.
 
         Returns:
@@ -217,12 +229,12 @@ class DataForest:
 
         if self.unversioned:
             self.logger.warning("Calling `at` on unversioned `DataForest`")
-        if process_name not in self.schema.PROCESS_NAMES:
-            raise KeyError(f"Invalid process_name: {process_name}. Options: {self.schema.PROCESS_NAMES}")
+        if process_name not in self.schema.__class__.PROCESS_NAMES:
+            raise KeyError(f"Invalid process_name: {process_name}. Options: {self.schema.__class__.PROCESS_NAMES}")
 
         spec = self.spec.copy()
         processes = self.schema.process_precursors[process_name] + [process_name]
-        stationary_keys = list(self.schema.PROCESS_NAMES)
+        stationary_keys = list(self.schema.__class__.PROCESS_NAMES)
         # TODO: remove inner udpate?
         inner_update = {k: v for k, v in spec.items() if k not in stationary_keys}
         update_recursive(spec[process_name], inner_update, inplace=True)
@@ -251,7 +263,7 @@ class DataForest:
     @property
     def paths(self) -> Dict[str, Path]:
         """
-        The paths to the data directories for each `process_run` in the process
+        The paths to the data directories for each `process_run` in the processes
         chain specified by `self.spec`
         """
         data_paths = {}
@@ -272,10 +284,10 @@ class DataForest:
     @property
     def process_spec(self) -> dict:
         """
-        Portion of `Spec` which pertains to process params rather than input
+        Portion of `Spec` which pertains to processes params rather than input
         data specification
         """
-        return {k: v for k, v in self.spec.items() if k in self.schema.PROCESS_NAMES}
+        return {k: v for k, v in self.spec.items() if k in self.schema.__class__.PROCESS_NAMES}
 
     def set_partition(self, process_name: Optional[str] = None, **kwargs):
         """Get new DataForest with recursively updated `partition`"""
@@ -288,6 +300,9 @@ class DataForest:
     def get_filtered(self, filter_dict: dict) -> "DataForest":
         """Get new DataForest with recursively updated `filtered`"""
         return self._get_compartment_updated("filter", filter_dict)
+
+    def get_temp_metadata_path(self: "DataForest", process_name: str):
+        return self[process_name].path / self.schema.__class__.TEMP_METADATA_FILENAME
 
     @staticmethod
     def _combine_datasets(
@@ -312,7 +327,7 @@ class DataForest:
         filter_dict = spec.get_filter_dict(spec, process_name)
         for key, val in subset_dict.items():
             # TODO: if process_name is None, do_subset should exclude process_names, otherwise,
-            #   exclude params for that process
+            #   exclude params for that processes
             subset = {key: val}
             df = self._do_subset(prev_df, subset)
             if len(df) == len(prev_df):
@@ -327,7 +342,7 @@ class DataForest:
         if unnecessary_filters:
             unnecessary_keys.update({"filter": unnecessary_filters})
         if unnecessary_keys:
-            logging.warning(f"Some keys may be unecessary in process : {process_name}: {unnecessary_keys}")
+            logging.warning(f"Some keys may be unecessary in processes : {process_name}: {unnecessary_keys}")
             # raise UnnecessaryKeysError(unnecessary_keys, process_name)
         if len(df) == 0:
             raise ValueError(
@@ -363,9 +378,9 @@ class DataForest:
     def data_spec(self) -> dict:
         """
         Portion of `Spec` which pertains to data specification rather than
-        process params
+        processes params
         """
-        return {k: v for k, v in self.spec.items() if k not in self.schema.PROCESS_NAMES}
+        return {k: v for k, v in self.spec.items() if k not in self.schema.__class__.PROCESS_NAMES}
 
     def __getitem__(self, process_name: str) -> ProcessRun:
         if process_name not in self._process_runs:
@@ -375,7 +390,7 @@ class DataForest:
     @property
     def _process_subpaths(self) -> Dict[str, str]:
         """
-        A lookup based on the process specifications in `self.spec` with
+        A lookup based on the processes specifications in `self.spec` with
         keys as `process_name`s and values as `ForestQuery` strings
         corresponding to the `process_run`
         """
@@ -386,20 +401,20 @@ class DataForest:
 
     def _map_file_io(self) -> Dict[str, Dict[str, FileIO]]:
         """
-        Assigns a `FilIO` to each file specified in `self.schema.FILE_MAP`.
+        Assigns a `FilIO` to each file specified in `self.schema.__class__.FILE_MAP`.
         Each `FileIO` is assigned a `reader` and a `writer` based on
         `self.reader_map` and `self.writer_map`, respectively. `reader_kwargs`
         and `writer_kwargs` are extracted from `self.reader_kwargs_map` and
         `self.writer_kwargs_map` to provide custom keyword arguments for each
         file that will be passed to the `reader` and `writer` when called.
         The io_map is flat dictionary with keys as `file_aliases` from
-        `self.schema.FILE_MAP` and corresponding `FileIO`s as values.
+        `self.schema.__class__.FILE_MAP` and corresponding `FileIO`s as values.
         Returns:
             io_map: lookup with `file_alias` keys and `FileIO` values
         """
-        # TODO: ME update docstring to reflect addition of process layer
+        # TODO: ME update docstring to reflect addition of processes layer
         io_map = dict()
-        for process_name, file_dict in self.schema.FILE_MAP.items():
+        for process_name, file_dict in self.schema.__class__.FILE_MAP.items():
             io_map[process_name] = dict()
             for file_alias, filename in file_dict.items():
                 filepath = self.paths[process_name] / filename

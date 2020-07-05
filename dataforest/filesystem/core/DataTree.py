@@ -1,13 +1,13 @@
 from copy import deepcopy
 from typing import List, Optional, Tuple, Union
 
-from dataforest.filesystem.Tree import Tree
+from dataforest.filesystem.core.Tree import Tree
 from dataforest.utils.utils import update_recursive
 
 
 class DataTree:
     """
-    Data and process parameters specification for a given `process_run`.
+    Data and processes parameters specification for a given `process_run`.
     Uses `ForestQuery` language to translate between directory name strings
     which contain hierarchical information, and `dict`s. Contains all
     information necessary to replicate a `process_run` except code versioning,
@@ -96,12 +96,12 @@ class DataTree:
     def from_str(cls, str_: str, params_names: Union[list, set, tuple]) -> "DataTree":
         """
         Instantiate from a `ForestQuery` syntax directory name which provides
-        process and data specifications. Since `subset`s and `params` are both
+        processes and data specifications. Since `subset`s and `params` are both
         at the root level in `ForestQuery`, any names not in `param_names` are
         assumed to be part of `subset`.
         Args:
             str_: directory name
-            params_names: names of process params
+            params_names: names of processes params
 
         Returns:
             inst: `DataTree` created from `ForestQuery` syntax directory name

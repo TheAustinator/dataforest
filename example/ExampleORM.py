@@ -20,7 +20,7 @@ class CellForest(DataForest):
 
     A path through specific `process_runs` of processes in the
     `process_hierarchy` are specified in the `spec_dict`, according to the
-    specifications of `dataforest.Spec`. Any root level (not under a process
+    specifications of `dataforest.Spec`. Any root level (not under a processes
     name in `spec_dict`) `subset`s or `filter`s are applied to `counts` and
     `meta`, which are the preferred methods for accessing cell metadata and
     the normalized counts matrix
@@ -29,7 +29,6 @@ class CellForest(DataForest):
     ROOT_LEVEL_COMPARTMENTS = {
         "subset",
     }
-    SCHEMA_CLASS = ProcessSchemaSC
     SPEC_CLASS = SpecSC
     READER_METHODS = ReaderMethodsSC
     WRITER_METHODS = WriterMethodsSC

@@ -5,9 +5,9 @@ from typing import Set, Union, Optional
 
 from pathlib import Path
 
-from dataforest.filesystem.DataTree import DataTree
-from dataforest.templates.ProcessSchema import ProcessSchema
-from dataforest.filesystem.Tree import Tree
+from dataforest.filesystem.core.DataTree import DataTree
+from dataforest.core.schema.ProcessSchema import ProcessSchema
+from dataforest.filesystem.core.Tree import Tree
 from dataforest.utils.utils import update_recursive
 
 
@@ -120,7 +120,7 @@ class Spec(dict):
 
     @staticmethod
     def get_process_spec_dict(dict_: Union[dict, "Spec"], schema: ProcessSchema):
-        return {k: v for k, v in dict_.items() if k in schema.PROCESS_NAMES}
+        return {k: v for k, v in dict_.items() if k in schema.__class__.PROCESS_NAMES}
 
     @staticmethod
     def get_subset_dict(

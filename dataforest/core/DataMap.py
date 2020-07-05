@@ -4,8 +4,8 @@ from typing import List, Optional, Union
 
 from pathlib import Path
 
-from dataforest.filesystem.DataTree import DataTree
-from dataforest.templates.ProcessSchema import ProcessSchema
+from dataforest.filesystem.core.DataTree import DataTree
+from dataforest.core.schema.ProcessSchema import ProcessSchema
 
 
 class DataMap(list):
@@ -13,12 +13,12 @@ class DataMap(list):
     Map of all existing output data from `process_run`s on filesystem.
     Extracts and stores all previous `process_run` specifications directly from
     filesystem directory structure. Converts the `ForestQuery` syntax of
-    `process_run` directories to data and process specifications that were used
+    `process_run` directories to data and processes specifications that were used
     for that run. Assumes directory structure which adheres to alternating
     `process_name`s and `process_run`s.
     Attributes:
         logger: attached logger
-        schema: definition of process hierarchy and expected files therewithin
+        schema: definition of processes hierarchy and expected files therewithin
     """
 
     def __init__(self, root_dir: Union[Path, str], schema: ProcessSchema):
@@ -104,11 +104,11 @@ class DataMap(list):
         Returns:
 
         """
-        # TODO: currently, if there are two sequential params directories with no process directory separating, the
+        # TODO: currently, if there are two sequential params directories with no processes directory separating, the
         #  first one will still be included
         operators_in_name = [op for op in DataTree.OPERATORS if op in name]
         if any(operators_in_name):
             rel_path = "/".join(path_elems)
-            self.logger.warning(f"WARNING: Path excluded for breaking alternating process/params pattern: {rel_path}")
+            self.logger.warning(f"WARNING: Path excluded for breaking alternating processes/params pattern: {rel_path}")
             return True
         return False
