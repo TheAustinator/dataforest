@@ -108,7 +108,7 @@ class Sweep:
                 for value in param_values:
                     spec = self.base_forest.spec.copy()
                     spec[process_name][param_name] = value
-                    forest = self.base_forest.copy(spec_dict=spec)
+                    forest = self.base_forest.copy(spec=spec)
                     forest_row.append(forest)
                     param_row.append({param_name: value})
                 forest_matrix.append(forest_row)
@@ -134,7 +134,7 @@ class Sweep:
                     spec = self.base_forest.spec.copy()
                     spec[process_name][name_1] = value_1
                     spec[process_name][name_2] = value_2
-                    forest = self.base_forest.copy(spec_dict=spec)
+                    forest = self.base_forest.copy(spec=spec)
                     forest_row.append(forest)
                     param_row.append({name_1: value_1, name_2: value_2})
                 forest_matrix.append(forest_row)

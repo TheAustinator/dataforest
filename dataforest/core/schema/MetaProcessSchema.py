@@ -8,16 +8,8 @@ from dataforest.config.MetaConfig import MetaConfig
 
 class MetaProcessSchema(MetaConfig):
     @property
-    def PROCESS_HIERARCHY(cls):
-        return cls._CONFIG["process_hierarchy"]
-
-    @property
     def PARAM_NAMES(cls):
         return cls._CONFIG["param_names"]
-
-    @property
-    def PROCESS_NAMES(cls):
-        return list(cls.PARAM_NAMES.keys())
 
     @property
     def SUBSET_PROXIES(cls):
@@ -51,7 +43,7 @@ class MetaProcessSchema(MetaConfig):
 
     @property
     def TEMP_METADATA_FILENAME(cls):
-        return cls._CONFIG.get("temp_metadata_filename")
+        return cls._CONFIG.get("temp_meta_filename")
 
     @staticmethod
     def _get_r_filepaths(scripts_dir, r_filenames):

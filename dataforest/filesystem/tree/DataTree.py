@@ -1,7 +1,7 @@
 from copy import deepcopy
 from typing import List, Optional, Tuple, Union
 
-from dataforest.filesystem.core.Tree import Tree
+from dataforest.filesystem.tree.Tree import Tree
 from dataforest.utils.utils import update_recursive
 
 

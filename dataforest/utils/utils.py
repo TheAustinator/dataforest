@@ -26,6 +26,10 @@ def update_recursive(dict_: dict, other: Mapping, inplace: bool = False) -> dict
     return dict_
 
 
+def list_lineage_lookup(list_):
+    return {x: list_[: list_.index(x)] for x in list_}
+
+
 def node_lineage_lookup(dict_: Dict[Any, Union[dict, set]]) -> Dict[Any, list]:
     """
     Build a traversal lookup to get to each node name in a nested `dict`.
@@ -86,3 +90,7 @@ def label_df_partitions(df: pd.DataFrame, columns: Any, encodings: bool = False)
             df["partition_code"] = df["partition"].apply(lambda x: "_".join(x))
             # df["partition_code"] = df["partition"].cat.codes
     return df
+
+
+def order_dict(dict_):
+    return {k: order_dict(v) if isinstance(v, dict) else v for k, v in sorted(dict_.items())}

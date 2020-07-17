@@ -1,8 +1,12 @@
+from typing import Dict
+
+from dataforest.core.Spec import Spec
 from dataforest.processes.core.MetaProcessMethods import MetaDataProcess
-from dataforest.utils import tether
+from dataforest.utils import copy_func, tether
 
 
 class ProcessMethods(metaclass=MetaDataProcess):
+    # TODO: docstring
     """
     Container base class for `staticmethod`s which execute `processes` in a
     processes system defined by a `ProcessSchema`. Methods should be decorated
@@ -13,8 +17,12 @@ class ProcessMethods(metaclass=MetaDataProcess):
     Method names must match `ProcessSchema`
     """
 
-    def __init__(self, forest: "DataForest"):
+    def __init__(self, forest: "DataForest", spec: Spec):
         self.forest = forest
-        for process_name, process in self.__class__.PROCESSES.items():
-            setattr(self, process_name, process)
+        alias_dict = {run_spec.name: run_spec.process for run_spec in spec}
+        callable_lookup = self.__class__.PROCESSES
+        for name, process_name in alias_dict.items():
+            callable_ = copy_func(callable_lookup[process_name])
+            callable_.__name__ = name
+            setattr(self, name, callable_)
         tether(self, "forest")

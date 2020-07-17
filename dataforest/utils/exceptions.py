@@ -26,7 +26,7 @@ class InputDataNotFound(FileNotFoundError):
     def __str__(self):
         return (
             f"Process `{self._process_name}` requires input data from `{self._requires}`. Not found at expected"
-            f"location: {self._forest.paths[self._requires]} based on `forest.spec`: {self._forest.spec}"
+            f"location: {self._forest.paths[self._requires]} based on `forest.spec`: {self._forest._spec}"
         )
 
 
@@ -44,6 +44,28 @@ class UnnecessaryKeysError(KeyError):
         return str_ + end_str
 
 
+class BadOperation(KeyError):
+    OPERATION = None
+
+    def __init__(self, column, val):
+        self._column = column
+        self._val = val
+
+    def __str__(self):
+        return (
+            f"{self.OPERATION} resulted in no rows - column: {self._column} val: {self._val}. Please note that any "
+            f"spaces in `spec` should be converted to underscores!"
+        )
+
+
+class BadSubset(BadOperation):
+    OPERATION = "subset"
+
+
+class BadFilter(BadOperation):
+    OPERATION = "filter"
+
+
 class HookException(Exception):
     def __init__(self, process_name: str, child_exceptions: Dict[str, Exception]):
         self.process_name = process_name
@@ -58,3 +80,14 @@ class HookException(Exception):
             if hasattr(e, "characters_written"):
                 str_ += "\n" + e.characters_written
         return str_
+
+
+class DuplicateProcessName(ValueError):
+    def __init__(self, process_name):
+        self._process_name = process_name
+
+    def __str__(self):
+        return (
+            f"Duplicate process: {self._process_name}. To include multiple different runs of the same process,"
+            f" please include a unique `alias` key for each entry in `spec` of a non-unique `process`"
+        )

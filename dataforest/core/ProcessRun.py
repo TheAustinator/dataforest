@@ -6,7 +6,6 @@ import pandas as pd
 from pathlib import Path
 from termcolor import cprint
 
-from dataforest.filesystem.core.DataTree import DataTree
 
 if TYPE_CHECKING:
     from dataforest.core.DataForest import DataForest
@@ -18,11 +17,12 @@ class ProcessRun:
     of a specific processes.
     """
 
-    def __init__(self, forest: "DataForest", process_name: str):
+    def __init__(self, forest: "DataForest", process_name: str, process: str):
         self.logger = logging.getLogger(f"ProcessRun - {process_name}")
         if process_name not in forest.spec:
             raise ValueError(f"key '{process_name}' not in spec: {forest.spec}")
         self.process_name = process_name
+        self.process = process
         self._forest = None
         self._parent_forest = forest
 
@@ -36,7 +36,7 @@ class ProcessRun:
         """
         # TODO: silent failure prone
         if not self._forest:
-            self._forest = self._parent_forest.at(self.process_name)
+            self._forest = self._parent_forest.goto_process(self.process_name)
         return self._forest
 
     @property
@@ -87,7 +87,7 @@ class ProcessRun:
         Checks whether run is done by checking whether output directory contains non-logging or temp files
         """
         # TODO: make more robust by adding `DONE_REQUIREMENT_FILES` to `ProcessSchema`
-        if self.path.exists():
+        if self.path is not None and self.path.exists():
             output_file_check = lambda x: not (x.endswith("out") or x.endswith("err") or x.startswith("temp"))
             output_files = filter(output_file_check, self.files)
             return len(list(output_files)) > 0
@@ -119,17 +119,11 @@ class ProcessRun:
 
     def subprocess_runs(self, process_name: str) -> pd.DataFrame:
         """DataFrame of spec info for all runs of a given subprocess"""
-        import ipdb
-
-        ipdb.set_trace()
-        run_dirs = os.listdir(str(self.path / process_name))
-        run_dicts = map(DataTree.from_str, run_dirs)
-        df = pd.DataFrame(run_dicts)
-        return df
+        raise NotImplementedError()
 
     @property
     def _file_lookup(self):
-        file_lookup = self.forest_any.schema.__class__.FILE_MAP[self.process_name]
+        file_lookup = self.forest_any.schema.__class__.FILE_MAP[self.process]
         standard_files = self.forest_any.schema.__class__.STANDARD_FILES
         file_lookup.update(standard_files)
         return file_lookup
