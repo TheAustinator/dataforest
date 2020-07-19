@@ -1,10 +1,14 @@
-import logging
-
 from dataforest.structures.cache.HashCache import HashCash
 from dataforest.utils.catalogue import run_id_from_multi_row
 
 
 class RunIdCache(HashCash):
+    """
+    Key: process_name
+
+    Val: run_id (hash)
+    """
+
     def __init__(self, spec, process_catalogue_hash):
         super().__init__()
         self._spec = spec

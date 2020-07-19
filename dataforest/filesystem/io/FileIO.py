@@ -18,7 +18,7 @@ class FileIO:
         self.method = method
         self.method_kwargs = method_kwargs
 
-    def __call__(self, obj: Optional[Any] = None, **kwargs):
+    def __call__(self, obj: Optional[Any] = None, **kwargs) -> Any:
         """
         Execute read or write on file
         Args:

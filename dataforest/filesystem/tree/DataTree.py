@@ -23,10 +23,9 @@ class DataTree:
     UNVERSIONED = "?"
     OPERATORS = (UP, DOWN, AND, FILTER, PARTITION, UNVERSIONED)
 
-    def __init__(self, input_dict: dict = None, params_names: Union[tuple, list] = ()):
+    def __init__(self, input_dict: dict = None):
         self.dict = {"subset": [], "filter": [], "partition": [], "params": Tree()}
         self.active_tree = None
-        self.param_names = params_names
         self.unversioned = False
         if input_dict:
             self._merge(input_dict, params_names)

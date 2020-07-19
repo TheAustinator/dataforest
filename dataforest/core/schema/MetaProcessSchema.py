@@ -8,10 +8,6 @@ from dataforest.config.MetaConfig import MetaConfig
 
 class MetaProcessSchema(MetaConfig):
     @property
-    def PARAM_NAMES(cls):
-        return cls._CONFIG["param_names"]
-
-    @property
     def SUBSET_PROXIES(cls):
         return {
             "max_lane_id": (le, "lane_id"),

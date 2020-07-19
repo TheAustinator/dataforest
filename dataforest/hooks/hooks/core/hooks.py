@@ -68,7 +68,7 @@ def hook_garbage_collection(dp):
 
 @hook
 def hook_store_run_spec(dp):
-    # TODO: dp.name likely to cause alias problem, becaused based on process def name
+    """Store `RunSpec` as yaml in process run directory"""
     run_spec = dp.forest.spec[dp.name]
     run_path = dp.forest.paths[dp.name]
     run_spec_path = run_path / "run_spec.yaml"  # TODO: hardcoded
@@ -78,6 +78,13 @@ def hook_store_run_spec(dp):
 
 @hook
 def hook_catalogue(dp):
+    """
+    Updates `run_catalogue.tsv` in enclosing process dir with current process
+    run. Adds a row with the `run_id` (hash), which serves as the process run
+    directory name.
+    If there's an existing entry for the current `RunSpec`, ensures that the
+    current `run_id` matches that stored, otherwise, raises an exception
+    """
     run_spec = dp.forest.spec[dp.name]
     run_spec_str = str(run_spec)
     run_id = dp.forest.paths.get_run_id(dp.name)

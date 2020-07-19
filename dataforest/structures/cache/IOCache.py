@@ -1,9 +1,26 @@
+from typing import Dict, Callable
+
 from dataforest.structures.cache.HashCache import HashCash
 from dataforest.filesystem.io.FileIO import FileIO
 
 
 class IOCache(HashCash):
-    def __init__(self, file_dict, method_dict, kwargs_dict, path_cache):
+    """
+    Lazy loading for `FileIO`s for a single process.
+
+    Key: `file_alias` -- alias for filename (union of keys in `standard_files`
+        and `file_map[process_name]` from dataforest.config.default_config.yaml
+
+    Val: `FileIO` object for `file_alias`
+    """
+
+    def __init__(
+        self,
+        file_dict: Dict[str, str],
+        method_dict: Dict[str, Callable],
+        kwargs_dict: Dict[str, dict],
+        path_cache: "PathCache",
+    ):
         super().__init__()
         self._file_dict = file_dict
         self._method_dict = method_dict

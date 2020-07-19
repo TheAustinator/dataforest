@@ -11,8 +11,14 @@ from dataforest.structures.cache.RunIdCache import RunIdCache
 
 class PathCache(HashCash):
     """
-    Key: process name
-    Val: path to process run matching spec
+    Lazy loading path lookup by process_name. If the `ProcessRun` has not yet
+    been executed, a  Due to non-determinism of
+    `run_id` hashes, attempting to
+
+    Key (str): process name
+
+    Val (Optional[Path]): path to process run matching spec
+        `process_run_path` = `process_path` / `run_id`
     """
 
     def __init__(self, root_dir: Path, spec: Spec):
@@ -44,6 +50,11 @@ class PathCache(HashCash):
         return self._run_id_cache[process_name]
 
     def _get(self, process_name: str) -> Optional[Path]:
+        """
+        Gets `process_run_path` if `process_path` exists (else None). Attempts
+        to retrieve the `run_id` it from `run_catalogue`, and generates it if
+        one doesn't exist.
+        """
         process_dir = self.get_process_dir(process_name)
         if not process_dir.exists():
             return None
@@ -52,4 +63,5 @@ class PathCache(HashCash):
             run_id = base64.urlsafe_b64encode(os.urandom(128))[:8].decode()
             run_id = run_id.replace("_", "a")  # "_" is reserved character
             self._run_id_cache[process_name] = run_id
-        return process_dir / run_id
+        process_run_dir = process_dir / run_id
+        return process_run_dir

@@ -123,7 +123,7 @@ class ProcessRun:
 
     @property
     def _file_lookup(self):
-        file_lookup = self.forest_any.schema.__class__.FILE_MAP[self.process]
+        file_lookup = self.forest_any.schema.__class__.FILE_MAP.get(self.process, {})
         standard_files = self.forest_any.schema.__class__.STANDARD_FILES
         file_lookup.update(standard_files)
         return file_lookup

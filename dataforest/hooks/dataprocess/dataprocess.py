@@ -28,6 +28,7 @@ class dataprocess(metaclass=MetaDataProcess):
         clean_hooks: Optional[Union[List, Tuple]] = None,
         **kwargs,
     ):
+        self._name = None
         self.forest = None
         self.setup_hooks = setup_hooks if setup_hooks is not None else self.__class__.SETUP_HOOKS
         self.clean_hooks = clean_hooks if clean_hooks is not None else self.__class__.CLEAN_HOOKS
@@ -38,19 +39,26 @@ class dataprocess(metaclass=MetaDataProcess):
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    @property
+    def name(self):
+        if self._name is None:
+            raise ValueError("dataprocess name not set")
+        return self._name
+
     def __call__(self, func) -> Callable:
         self.process = func.__name__
 
         @wraps(func)
-        def wrapper(forest, *args, **kwargs):
+        def wrapper(forest, run_name, *args, **kwargs):
             """
             Runs setup hooks, then processes, then attempts each cleanup hook,
             raising any errors at the end.
             """
             self.forest = forest
+            self._name = run_name
             self._run_hooks(self.setup_hooks)
             try:
-                return func(self.forest, *args, **kwargs)
+                return func(self.forest, run_name, *args, **kwargs)
             except Exception as e:
                 raise e
             finally:
@@ -58,10 +66,6 @@ class dataprocess(metaclass=MetaDataProcess):
 
         self.func = wrapper
         return wrapper
-
-    @property
-    def name(self):
-        return self.func.__name__
 
     def _run_hooks(self, hooks: Iterable[Callable], try_all: bool = False):
         """

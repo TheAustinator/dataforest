@@ -1,4 +1,7 @@
 from functools import wraps
+from typing import Any, Iterable, Optional, Callable, List
+
+from dataforest.utils.copy_func import copy_func
 
 
 def tether(obj, tether_attr, incl_methods=None, excl_methods=None):
@@ -11,12 +14,14 @@ def tether(obj, tether_attr, incl_methods=None, excl_methods=None):
     tether_arg = getattr(obj, tether_attr)
     method_list = get_methods(obj, incl_methods, excl_methods)
     for method_name in method_list:
-        method = getattr(obj, method_name)
+        method = copy_func(getattr(obj, method_name))
         tethered_method = make_tethered_method(method, tether_arg)
         setattr(obj, method_name, tethered_method)
 
 
-def get_methods(obj, excl_methods=None, incl_methods=None):
+def get_methods(
+    obj: Any, excl_methods: Optional[Iterable[str]] = None, incl_methods: Optional[Iterable[str]] = None
+) -> List[str]:
     """Get all user defined methods of an object"""
     all_methods = filter(lambda x: not x.startswith("__"), dir(obj))
     method_list = []
@@ -31,9 +36,14 @@ def get_methods(obj, excl_methods=None, incl_methods=None):
     return method_list
 
 
-def make_tethered_method(method, tether_arg):
+def make_tethered_method(method: Callable, tether_arg: str) -> Callable:
+    """
+    Returns a callable which no longer requires first positional arg because it
+    the enclosing objects attribute named by `tether_arg` is passed implicitly.
+    """
+
     @wraps(method)
     def tethered_method(*args, **kwargs):
-        return method(tether_arg, *args, **kwargs)
+        return method(tether_arg, method.__name__, *args, **kwargs)
 
     return tethered_method

@@ -1,4 +1,12 @@
+# TODO: convert to abc
 class HashCash(dict):
+    """
+    Base class for lazy loading dictionaries, where the loading function is
+    defined as `_get`
+    If `_get` returns `None` for a given key, the current call will return
+    `None`, but `_get` will run again upon the next `__getitem__`.
+    """
+
     def __init__(self):
         # TODO: allow get function dynamically passed here?
         super().__init__()

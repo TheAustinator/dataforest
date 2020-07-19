@@ -1,7 +1,17 @@
 import logging
 
+import pandas as pd
 
-def run_id_from_multi_row(run_id_rows):
+
+def run_id_from_multi_row(run_id_rows: pd.DataFrame) -> str:
+    """
+    Extract the `run_id` from a `run_catalogue` where multiple rows match the
+    given `RunSpec`. Note that this shouldn't happen, but in the case of a
+    double entry, or two different `run_id`s for the same `RunSpec`, this gets
+    the first.
+    Args:
+        run_id_rows: rows of run_catalogue matching a given `RunSpec`
+    """
     unique = list(run_id_rows["run_id"].unique())
     run_id = unique[0]
     if len(unique) != 1:

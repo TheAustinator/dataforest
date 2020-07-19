@@ -11,11 +11,12 @@ from dataforest.structures.cache.HashCache import HashCash
 
 class RunCatalogCache(HashCash):
     """
-    Key: process name
-    Val: run_catalogue dataframe for all runs of a given process after the
-        process chain preceeding `process_name`, as specified in `spec`.
-        The run catalogue serves as a lookup to find the directory hash for a
-        given `RunSpec`.
+    Lazy loading lookup for run_catalogue dataframes by process.
+
+    Key (str): process name
+
+    Val (Optional[pd.DataFrame]): The run catalogue serves as a lookup to find
+        the directory hash for a given `RunSpec`.
     """
 
     # TODO: to make this more readable, rather than storing a JSON string, actually make table of params, etc
@@ -34,6 +35,10 @@ class RunCatalogCache(HashCash):
         return list(cached_keys.union(run_spec_names))
 
     def _get(self, process_name: str) -> pd.DataFrame:
+        """
+        Attempts to load existing run catalogue from the `process_path` of
+        `process_name`, and `_build`s one if none exists.
+        """
         process_dir = self.get_process_dir(process_name)
         catalogue_path = process_dir / "run_catalogue.tsv"  # TODO: hardcoded
         if catalogue_path.exists():
@@ -45,8 +50,8 @@ class RunCatalogCache(HashCash):
     @staticmethod
     def _build(process_dir: Path) -> pd.DataFrame:
         """
-        Search runs in `process_dir` to see if any have a specification
-        matching `spec_item`
+        Builds `run_catalogue` from any existing process runs in a
+        `process_path`
         """
         # TODO: make function to merge during push
         run_spec_filename = RunCatalogCache.RUN_SPEC_FILENAME

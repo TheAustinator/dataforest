@@ -21,11 +21,6 @@ class ProcessSchema(metaclass=MetaProcessSchema):
                     ...},
                  ...}
 
-        PARAM_NAMES: lookup of param names for `process_names`
-            Examples:
-                {"process_1": {"alpha", "bias", ...},
-                 ...}
-
         PROCESS_HIERARCHY: a nested `dict` which represents the processes
             hierarchy. Sibling nodes which have the same child processes
             are represented as `tuple`s, and a level in which all sibling nodes
@@ -60,7 +55,6 @@ class ProcessSchema(metaclass=MetaProcessSchema):
             Examples: {"max_size": (operators.le, "size")
 
     Attributes:
-        param_names: copy of `PARAM_NAMES` unless specified
         process_precursors: lookup of sequence of upstream processes for
             `process_name`s
             Example:
@@ -76,13 +70,11 @@ class ProcessSchema(metaclass=MetaProcessSchema):
 
     def __init__(
         self,
-        param_names: Optional[Union[str, Path, Union[Dict[str, Set[str]]]]] = None,
         root_dir: Optional[Union[str, Path]] = None,
         subset_proxies: Optional[Dict[str, Tuple[Callable, str]]] = None,
         file_map: Optional[Union[Dict[str, Dict[str, str]], str, Path]] = None,
     ):
         # TODO: QUEUE allow these params to be passed to dataforest
-        self.param_names = param_names if param_names is not None else self.__class__.PARAM_NAMES.copy()
         self.subset_proxies = subset_proxies if subset_proxies is not None else self.__class__.SUBSET_PROXIES.copy()
         self.file_map = file_map if file_map is not None else self.__class__.FILE_MAP.copy()
         if root_dir is not None:
