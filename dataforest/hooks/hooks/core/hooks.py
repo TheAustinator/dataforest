@@ -11,8 +11,8 @@ from dataforest.hooks.hook import hook
 
 
 @hook
-def hook_get_process_forest(dp):
-    dp.forest = dp.forest.goto_process(dp.name)
+def hook_goto_process(dp):
+    dp.forest.goto_process(dp.name)
 
 
 @hook(attrs=["comparative"])
@@ -37,9 +37,9 @@ def hook_comparative(dp):
 @hook(attrs=["requires"])
 def hook_input_exists(dp):
     """Checks that input `ProcessRun` directory exists"""
-    if not dp.forest.paths[dp.requires].exists():
+    if not dp.forest.paths_exists[dp.requires].exists():
         raise InputDataNotFound(dp, dp.requires, dp.name)
-    contains_files = any(list(map(Path.is_file, dp.forest.paths[dp.requires].iterdir())))
+    contains_files = any(list(map(Path.is_file, dp.forest.paths_exists[dp.requires].iterdir())))
     if not contains_files:
         raise InputDataNotFound(dp.forest, dp.requires, dp.name)
 
@@ -47,10 +47,10 @@ def hook_input_exists(dp):
 @hook
 def hook_mkdirs(dp):
     """Setup hook that makes directories for `ProcessRun` outputs"""
-    process_path = dp.forest.paths.get_process_dir(dp.name)
+    process_path = dp.forest.paths_exists.get_process_dir(dp.name)
     if not process_path.exists():
         process_path.mkdir(parents=True, exist_ok=True)
-    run_path = dp.forest.paths[dp.name]
+    run_path = dp.forest.paths_exists[dp.name]
     if not run_path.exists():
         run_path.mkdir(parents=True, exist_ok=True)
 
@@ -70,7 +70,7 @@ def hook_garbage_collection(dp):
 def hook_store_run_spec(dp):
     """Store `RunSpec` as yaml in process run directory"""
     run_spec = dp.forest.spec[dp.name]
-    run_path = dp.forest.paths[dp.name]
+    run_path = dp.forest.paths_exists[dp.name]
     run_spec_path = run_path / "run_spec.yaml"  # TODO: hardcoded
     with open(run_spec_path, "w") as f:
         yaml.dump(dict(run_spec), f)
@@ -87,8 +87,8 @@ def hook_catalogue(dp):
     """
     run_spec = dp.forest.spec[dp.name]
     run_spec_str = str(run_spec)
-    run_id = dp.forest.paths.get_run_id(dp.name)
-    process_dir = dp.forest.paths.get_process_dir(dp.name)
+    run_id = dp.forest.paths_exists.get_run_id(dp.name)
+    process_dir = dp.forest.paths_exists.get_process_dir(dp.name)
     catalogue_path = process_dir / "run_catalogue.tsv"
     df = pd.read_csv(catalogue_path, sep="\t", index_col="run_spec")
     if str(run_spec) not in df.index:
