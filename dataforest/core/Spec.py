@@ -91,7 +91,7 @@ class Spec(list):
         Examples:
             >>> precursors_lookup = self.get_precursors_lookup(incl_current=True, incl_root=True)
             >>> precursors_lookup["cluster"]
-            >>> {}
+            >>> ["root", "normalize", "reduce", "cluster"]
         """
         if incl_root and incl_current:
             return self._precursors_lookup_incl_root_curr
