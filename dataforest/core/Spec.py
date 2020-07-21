@@ -58,19 +58,49 @@ class Spec(list):
         >>> ]
         >>> spec = Spec(spec)
         Attributes:
-            _run_spec_lookup: used for lookup by process_name rather than int
-            precursors_lookup:
+            _run_spec_lookup: used for `RunSpec` lookup by process_name rather
+                than int index
+            _precursors_lookup{...}:
+                {...}: suffix determines whether "root" and the current_process
+                    (key) will be included
+                Key: process_name (e.g. "cluster")
+                Value: list of precursor processes (e.g. ["root", "normalize",
+                    "reduce", "cluster] for {_incl_root_curr}
             process_order:
     """
 
     def __init__(self, spec: Union[List[dict], "Spec[RunSpec]"]):
         super().__init__([RunSpec(item) for item in spec])
         self._run_spec_lookup: Dict[str, "RunSpec"] = self._build_run_spec_lookup()
-        self.precursors_lookup: Dict[str, List[str]] = self._build_process_precursors()
+        self._precursors_lookup: Dict[str, List[str]] = self._build_precursors_lookup()
+        self._precursors_lookup_incl_curr: Dict[str, List[str]] = self._build_precursors_lookup_incl_curr()
+        self._precursors_lookup_incl_root: Dict[str, List[str]] = self._build_precursors_lookup_incl_root()
+        self._precursors_lookup_incl_root_curr: Dict[str, List[str]] = self._build_precursors_lookup_incl_root_curr()
         self.process_order: List[str] = [spec_item.name for spec_item in self]
 
     def copy(self) -> "Spec":
         return deepcopy(self)
+
+    def get_precursors_lookup(self, incl_current: bool = False, incl_root: bool = False) -> Dict[str, List[str]]:
+        """
+        Gets a lookup of process_name precursors
+        Args:
+            incl_current: include key process_name in value list
+            incl_root: include root in value list
+
+        Examples:
+            >>> precursors_lookup = self.get_precursors_lookup(incl_current=True, incl_root=True)
+            >>> precursors_lookup["cluster"]
+            >>> {}
+        """
+        if incl_root and incl_current:
+            return self._precursors_lookup_incl_root_curr
+        elif incl_root:
+            return self._precursors_lookup_incl_root
+        elif incl_current:
+            return self._precursors_lookup_incl_curr
+        else:
+            return self._precursors_lookup
 
     def get_subset_list(self, process_name: str) -> List[dict]:
         """See `_get_data_operation_list`"""
@@ -140,7 +170,8 @@ class Spec(list):
         """
         operation_list = []
         if process_name:
-            for precursor_name in self.precursors_lookup[process_name]:
+            process_name_list = self.get_precursors_lookup(incl_current=True)[process_name]
+            for precursor_name in process_name_list:
                 run_spec = self[precursor_name]
                 operation = getattr(run_spec, operation_name)
                 operation_list.append(operation)
@@ -156,19 +187,44 @@ class Spec(list):
             process_lookup[process_name] = run_spec
         return process_lookup
 
-    def _build_process_precursors(self) -> Dict[str, List[str]]:
+    def _build_precursors_lookup(self) -> Dict[str, List[str]]:
         """See class definition"""
-        precursors = {}
+        precursors = {"root": []}
         current_precursors = []
         for spec_item in self:
             precursors[spec_item.name] = current_precursors.copy()
             current_precursors.append(spec_item.name)
         return precursors
 
+    def _build_precursors_lookup_incl_curr(self) -> Dict[str, List[str]]:
+        """See class definition"""
+        precursor_lookup = deepcopy(self._precursors_lookup)
+        for process_name, precursors in precursor_lookup.items():
+            precursors.append(process_name)
+        return precursor_lookup
+
+    def _build_precursors_lookup_incl_root(self):
+        """See class definition"""
+        precursor_lookup = deepcopy(self._precursors_lookup)
+        for process_name, precursors in precursor_lookup.items():
+            precursors.insert(0, "root")
+        return precursor_lookup
+
+    def _build_precursors_lookup_incl_root_curr(self):
+        """See class definition"""
+        precursor_lookup = deepcopy(self._precursors_lookup)
+        for process_name, precursors in precursor_lookup.items():
+            precursors.insert(0, "root")
+            precursors.append(process_name)
+        return precursor_lookup
+
     def __getitem__(self, item: Union[str, int]) -> "RunSpec":
         """Get `RunSpec` either via `int` index or `name`"""
         if not isinstance(item, int):
-            return self._run_spec_lookup[item]
+            try:
+                return self._run_spec_lookup[item]
+            except Exception as e:
+                raise e
         else:
             return super().__getitem__(item)
 
@@ -219,7 +275,7 @@ class RunSpec(dict):
         return self.get("partition", {})
 
     def ordered(self) -> dict:
-        """Order alphabetically for deterministic string representation"""
+        """Order dict alphabetically for deterministic string representation"""
         return order_dict(self)
 
     def __str__(self):

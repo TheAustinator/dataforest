@@ -1,5 +1,5 @@
+from collections import ChainMap
 import logging
-import os
 from typing import Dict, List, TYPE_CHECKING
 
 import pandas as pd
@@ -19,12 +19,15 @@ class ProcessRun:
 
     def __init__(self, forest: "DataForest", process_name: str, process: str):
         self.logger = logging.getLogger(f"ProcessRun - {process_name}")
-        if process_name not in forest.spec:
+        if process_name not in forest.spec and process_name != "root":
             raise ValueError(f"key '{process_name}' not in spec: {forest.spec}")
         self.process_name = process_name
         self.process = process
-        self._forest = None
-        self._parent_forest = forest
+        self._forest = forest
+        self._layers_files = self._build_layers_files()
+        self._file_lookup = self._build_file_lookup()
+        self._path_map = None
+        self._path_map_prior = None
 
     @property
     def forest(self) -> "DataForest":
@@ -34,20 +37,24 @@ class ProcessRun:
         current node should only be used for paths, as the parent DataForest is
         returned.
         """
-        # TODO: silent failure prone
-        if not self._forest:
-            self._forest = self._parent_forest.goto_process(self.process_name)
         return self._forest
-
-    @property
-    def forest_any(self):
-        """quick access if it doesn't matter whether forest or parent forest"""
-        return self._forest if self._forest else self._parent_forest
 
     @property
     def path(self) -> Path:
         """Path to directory containing processes output files and logs"""
-        return self.forest_any.paths[self.process_name]
+        return self.forest.paths[self.process_name]
+
+    @property
+    def process_meta(self):
+        """
+        Gets additional metadata created by the current process, which is
+        usually used to merge with the overall metadata.
+        """
+        meta_path = self.path / "meta.tsv"
+        df = None
+        if meta_path.exists():
+            df = pd.read_csv(meta_path, sep="\t", index_col=0)
+        return df
 
     @property
     def files(self) -> List[str]:
@@ -59,12 +66,31 @@ class ProcessRun:
         return [path for path in self.path.iterdir() if path.is_file()]
 
     @property
-    def path_map(self) -> Dict[str, Path]:
+    def process_path_map(self) -> Dict[str, Path]:
         """
         keys (str): processes `file_alias`es (defined in `ProcessSchema`)
         values (Path): paths to files
         """
         return {file_alias: self.path / self._file_lookup[file_alias] for file_alias in self._file_lookup}
+
+    @property
+    def path_map(self) -> Dict[str, Path]:
+        """
+        Path map like `process_path_map`, but including files which are not
+        present in the current process run dir, but are from previous
+        processes. Gets paths for all aliases, providing the path for the most
+        recent file for each in the process lineage.
+        """
+        if self._path_map is None:
+            self._path_map = self._build_path_map(incl_curr=True)
+        return self._path_map
+
+    @property
+    def path_map_prior(self) -> Dict[str, Path]:
+        """Like `path_map`, but for excluding the current process"""
+        if self._path_map_prior is None:
+            self._path_map_prior = self._build_path_map(incl_curr=False)
+        return self._path_map_prior
 
     @property
     def file_map(self) -> Dict[str, str]:
@@ -121,9 +147,36 @@ class ProcessRun:
         """DataFrame of spec info for all runs of a given subprocess"""
         raise NotImplementedError()
 
-    @property
-    def _file_lookup(self):
-        file_lookup = self.forest_any.schema.__class__.FILE_MAP.get(self.process, {})
-        standard_files = self.forest_any.schema.__class__.STANDARD_FILES
-        file_lookup.update(standard_files)
+    def _build_layers_files(self) -> Dict[str, str]:
+        """
+        Builds {file_alias: filename} lookup for additional layers specified
+        for process in config.
+        """
+        layers_names = self.forest.schema.__class__.PROCESS_LAYERS.get(self.process, [])
+        layers_files_list = [self.forest.schema.__class__.LAYERS[name] for name in layers_names]
+        layers_files = dict(ChainMap(*layers_files_list))
+        return layers_files
+
+    def _build_file_lookup(self) -> Dict[str, str]:
+        """
+        Builds {file_alias: filename} lookup which combines config file_map and
+        process layers
+        """
+        file_lookup = self.forest.schema.__class__.FILE_MAP.get(self.process, {})
+        file_lookup.update(self._layers_files)
         return file_lookup
+
+    def _build_path_map(self, incl_curr: bool = False) -> Dict[str, Path]:
+        """
+        See `path_map` property
+        Args:
+            incl_curr: whether or not to include files from the current process
+        """
+        spec = self.forest.spec
+        precursor_lookup = spec.get_precursors_lookup(incl_current=incl_curr, incl_root=True)
+        process_runs = [self.forest[process_name] for process_name in precursor_lookup]
+        process_path_map_list = [pr.process_path_map for pr in process_runs]
+        path_map = dict()
+        for process_path_map in process_path_map_list:
+            path_map.update(process_path_map)
+        return path_map

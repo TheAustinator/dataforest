@@ -25,6 +25,8 @@ from dataforest.utils.utils import update_recursive
 
 class DataForest:
     """
+    # TODO: update
+    NOTE: OUTDATED DOCSTRING
     Core interface for package, which is used to access hierarchical data
     output by chains of processes, whose `process_run`s can be described by the
     processes `params` and input data. At the root level processes, the input data
@@ -79,7 +81,7 @@ class DataForest:
         _cache_{file_alias}:
 
     Attributes:
-        _paths (PathCache): list of all existing paths through hierarchical
+        _paths_exists (PathCache): list of all existing paths through hierarchical
             processes filesystem as dicts in `Spec` format.
         logger:
         schema:
@@ -98,6 +100,7 @@ class DataForest:
     READER_METHODS: Type = ReaderMethods
     WRITER_METHODS: Type = WriterMethods
     BATCH_METHODS: Type = BatchMethods
+    DATA_FILE_ALIASES: set = set()
     # HYPERPARAMETER_METHODS: Type = HyperparameterMethods
     READER_MAP: dict = dict()
     WRITER_MAP: dict = dict()
@@ -130,23 +133,15 @@ class DataForest:
         self.root_dir = Path(root_dir)
         self.spec = self._init_spec(spec)
         self.verbose = verbose
-        # TODO: log file operations if verbose
         self.logger = logging.getLogger(self.__class__.__name__)
         self.plot = self.PLOT_METHODS(self)
         self.process = self.PROCESS_METHODS(self, self.spec)
         # self.hyper = HyperparameterMethods(self)
         self.schema = self.SCHEMA_CLASS()
-        self._paths = PathCache(self.root_dir, self.spec)
+        self._paths_exists = PathCache(self.root_dir, self.spec, exists_req=True)
+        self._paths = self._paths_exists.get_shared_memory_view(exist_req=False)
         self._process_runs = dict()
-        self._file_tree = Tree(self.schema.__class__.FILE_MAP)
-        self._reader_kwargs_map = self._file_tree.apply_leaves(lambda x: dict()).dict
-        self._writer_kwargs_map = self._file_tree.apply_leaves(lambda x: dict()).dict
-        self._reader_method_map = self._file_tree.apply_leaves(self._map_default_reader_methods).dict
-        self._writer_method_map = self._file_tree.apply_leaves(self._map_default_writer_methods).dict
-        update_recursive(self._reader_kwargs_map, self.READER_KWARGS_MAP, inplace=True)
-        update_recursive(self._writer_kwargs_map, self.WRITER_KWARGS_MAP, inplace=True)
-        update_recursive(self._reader_method_map.update, self.READER_MAP, inplace=True)
-        update_recursive(self._writer_method_map.update, self.WRITER_MAP, inplace=True)
+        # TODO:
         self.f, self.w = self._map_file_io()
 
     @property
@@ -158,6 +153,34 @@ class DataForest:
         change this property.
         """
         return self._current_process
+
+    def goto_process(self, process_name: str) -> "DataForest":
+        """
+        Updates the state of the `DataForest` object to reflect the
+        `ProcessRun` of `process_name` by:
+            - clearing metadata cache so that it can be recalculated to include
+                only the metadata up to and including that for `process_name`
+            - updates the data operations (`subset`, `filter`, `partition`)
+            - clears cached data for attributes specified in
+                `DATA_FILE_ALIASES` so that it may be recalculated
+                appropriately
+            process_name: as specified in `spec` under the key `alias` if
+                present, or `process` if not
+        """
+
+        if self.current_process != process_name:
+            prev_path_map = self[self.current_process].path_map if self.current_process else {}
+            if self.unversioned:
+                self.logger.warning("Calling `at` on unversioned `DataForest`")
+            self._current_process = process_name
+            self._meta = self._apply_data_ops(process_name)
+            new_path_map = self[self.current_process].path_map
+            path_map_changes = {alias for alias, path in new_path_map.items() if prev_path_map.get(alias, None) != path}
+            for file_alias in path_map_changes:
+                if file_alias in self.DATA_FILE_ALIASES:
+                    data_attr = f"_{file_alias}"
+                    setattr(self, data_attr, None)
+        return self
 
     @classmethod
     def load(cls, root_dir, **kwargs):
@@ -204,44 +227,9 @@ class DataForest:
         kwargs = {**additional_kwargs, **kwargs}
         return cls(root_dir, **kwargs)
 
-    def goto_process(self, process_name: str) -> "DataForest":
-        """
-        There can be multiple specifications for `subset`, `filter`, and
-        `partition` under different `process_name`s in `self.spec`, and also
-        at the root level (at the base level of `self.spec`). When running a
-        particular processes, specifications for that processes may occur
-        both/either at `process_name` and/or at root. To account for either
-        case, we want to aggregate these.
-
-        This method establishes uniformity of `subset`, `filter`, and
-        `partition` in `self.spec` between root level and `process_name`.
-        First, the entries for `process_name` are updated from the root level,
-        then the root level is updated from the processes name. If there are no
-        conflicting keys between root and `process_name`, this order doesn't
-        matter, but in the case of conflicts, the value at root will overwrite
-        that at `process_name`.
-
-        Note that `params` are left out since they are specific to
-        `process_name`, and not used to slice or modify data in the `DataForest`
-        Args:
-            process_name: processes name under `self.spec` with which to
-                establish uniformity of `self.spec`.
-
-        Returns:
-            A spec with an updated DataForest which has the aggregate s
-        """
-
-        # TODO: CORE update -- duplication still required, but maybe we can use the _filter_subset method
-
-        if self.unversioned:
-            self.logger.warning("Calling `at` on unversioned `DataForest`")
-        self._current_process = process_name
-        self._apply_data_operations(process_name)
-        return self
-
     def copy(self):
         inst = deepcopy(self)
-        inst.reset_meta()
+        inst.set_meta(None)
         return inst
 
     def copy_legacy(self, **kwargs) -> "DataForest":
@@ -261,9 +249,16 @@ class DataForest:
     def paths(self) -> Dict[str, Path]:
         """
         The paths to the data directories for each `process_run` in the processes
-        chain specified by `self.spec`
+        chain specified by `self.spec`, including only those which exist.
         """
         return self._paths
+
+    @property
+    def paths_exists(self) -> Dict[str, Path]:
+        """
+        Like `paths`, but existence not required.
+        """
+        return self._paths_exists
 
     def set_partition(self, process_name: Optional[str] = None, **kwargs):
         """Get new DataForest with recursively updated `partition`"""
@@ -274,7 +269,10 @@ class DataForest:
 
     def __getitem__(self, process_name: str) -> ProcessRun:
         if process_name not in self._process_runs:
-            process = self.spec[process_name].process
+            process = self.spec[process_name].process if process_name != "root" else "root"
+            if process_name in ("root", None):
+                process_name = "root"
+                process = "root"
             self._process_runs[process_name] = ProcessRun(self, process_name, process)
         return self._process_runs[process_name]
 
@@ -287,7 +285,7 @@ class DataForest:
     ):
         raise NotImplementedError("Must be implemented by subclass")
 
-    def _apply_data_operations(self, process_name: str):
+    def _apply_data_ops(self, process_name: str, df: Optional[pd.DataFrame] = None):
         """
         Apply subset and filter operations to a dataframe where the operations
         are derived from the `spec`, consecutively applying data operations,
@@ -301,14 +299,15 @@ class DataForest:
         """
         subset_list = self.spec.get_subset_list(process_name)
         filter_list = self.spec.get_filter_list(process_name)
-        self.set_meta(None)
-        meta = self.meta.copy()
+        if df is None:
+            self.set_meta(None)
+            df = self.meta.copy()
         for (subset, filter_) in zip(subset_list, filter_list):
             for column, val in subset.items():
-                meta = self._do_subset(meta, column, val)
+                df = self._do_subset(df, column, val)
             for column, val in filter_.items():
-                meta = self._do_filter(meta, column, val)
-        self.set_meta(meta)
+                df = self._do_filter(df, column, val)
+        return df
 
     @staticmethod
     def _do_subset(df: pd.DataFrame, column: str, val: Any) -> pd.DataFrame:
@@ -337,16 +336,36 @@ class DataForest:
         return df
 
     def _map_file_io(self) -> Tuple[Dict[str, IOCache], Dict[str, IOCache]]:
-        reader_map = dict()
-        writer_map = dict()
-        for process_name, file_dict in self.schema.__class__.FILE_MAP.items():
+        """
+        Builds a lookup of lazy loading caches for file readers and writers,
+        which have implicit access to paths, methods, and kwargs for each file.
+        Returns:
+            {reader, writer}_map:
+                Key: file_alias (e.g. "rna")
+                Value: IOCache (see class definition)
+        """
+        file_map = Tree(self.schema.__class__.FILE_MAP)
+        reader_kwargs_map = file_map.apply_leaves(lambda x: dict()).dict
+        writer_kwargs_map = file_map.apply_leaves(lambda x: dict()).dict
+        reader_method_map = file_map.apply_leaves(self._map_default_reader_methods).dict
+        writer_method_map = file_map.apply_leaves(self._map_default_writer_methods).dict
+        update_recursive(reader_kwargs_map, self.READER_KWARGS_MAP, inplace=True)
+        update_recursive(writer_kwargs_map, self.WRITER_KWARGS_MAP, inplace=True)
+        update_recursive(reader_method_map.update, self.READER_MAP, inplace=True)
+        update_recursive(writer_method_map.update, self.WRITER_MAP, inplace=True)
+        reader_map, writer_map = dict(), dict()
+        for process_name, file_dict in file_map.dict.items():
             if process_name in self.spec.process_order:
-                reader_method_dict = self._reader_method_map[process_name]
-                writer_method_dict = self._writer_method_map[process_name]
-                reader_kwargs_dict = self._reader_kwargs_map[process_name]
-                writer_kwargs_dict = self._writer_kwargs_map[process_name]
-                reader_map[process_name] = IOCache(file_dict, reader_method_dict, reader_kwargs_dict, self._paths)
-                writer_map[process_name] = IOCache(file_dict, writer_method_dict, writer_kwargs_dict, self._paths)
+                reader_method_dict = reader_method_map[process_name]
+                writer_method_dict = writer_method_map[process_name]
+                reader_kwargs_dict = reader_kwargs_map[process_name]
+                writer_kwargs_dict = writer_kwargs_map[process_name]
+                reader_map[process_name] = IOCache(
+                    file_dict, reader_method_dict, reader_kwargs_dict, self._paths_exists
+                )
+                writer_map[process_name] = IOCache(
+                    file_dict, writer_method_dict, writer_kwargs_dict, self._paths_exists
+                )
         return reader_map, writer_map
 
     def _map_default_reader_methods(self, filename: str) -> Optional[Callable]:

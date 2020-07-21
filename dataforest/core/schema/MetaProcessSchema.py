@@ -15,31 +15,20 @@ class MetaProcessSchema(MetaConfig):
         }
 
     @property
-    def STANDARD_FILES(cls):
-        return cls._CONFIG["standard_files"]
-
-    @property
     def FILE_MAP(cls):
-        return cls._CONFIG["file_map"]
+        return cls["file_map"]
 
     @property
-    def R_FILENAMES(cls):
-        return cls._CONFIG.get("r_filenames", {})
+    def LAYERS(cls):
+        return cls["layers"]
 
     @property
-    def R_FILEPATHS(cls):
-        return cls._get_r_filepaths(cls.R_SCRIPTS_DIR, cls.R_FILENAMES)
-
-    @property
-    def R_SCRIPTS_DIR(cls):
-        path = cls._CONFIG.get("r_scripts_module")
-        if path:
-            path = import_module(path).__path__[0]
-        return path
+    def PROCESS_LAYERS(cls):
+        return cls["process_layers"]
 
     @property
     def TEMP_METADATA_FILENAME(cls):
-        return cls._CONFIG.get("temp_meta_filename")
+        return cls["temp_meta_filename"]
 
     @staticmethod
     def _get_r_filepaths(scripts_dir, r_filenames):

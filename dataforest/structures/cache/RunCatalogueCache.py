@@ -56,9 +56,7 @@ class RunCatalogCache(HashCash):
         # TODO: make function to merge during push
         run_spec_filename = RunCatalogCache.RUN_SPEC_FILENAME
         process_dir = Path(process_dir)
-        if not process_dir.exists():
-            process_name = process_dir.parent.parent.name
-            raise FileNotFoundError(f"No process run exists at {process_dir.parent}. Please run {process_name} first")
+        process_dir.mkdir(parents=True, exist_ok=True)
         catalogue_dict = dict()
         for process_run_path in process_dir.glob("*"):
             if process_run_path.is_file():

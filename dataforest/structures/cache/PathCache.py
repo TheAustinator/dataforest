@@ -1,5 +1,6 @@
 import base64
 import os
+from copy import copy
 from pathlib import Path
 from typing import Optional
 
@@ -21,10 +22,11 @@ class PathCache(HashCash):
         `process_run_path` = `process_path` / `run_id`
     """
 
-    def __init__(self, root_dir: Path, spec: Spec):
+    def __init__(self, root_dir: Path, spec: Spec, exists_req: bool):
         super().__init__()
         self._cache["root"] = root_dir
         self._spec = spec
+        self._exists_req = exists_req
         self._process_catalogue_cache = RunCatalogCache(self.get_process_dir, self._spec)
         self._run_id_cache = RunIdCache(self._spec, self._process_catalogue_cache)
 
@@ -38,8 +40,8 @@ class PathCache(HashCash):
         Process directory containing process runs, which is not specific to any
         specific process run.
         """
-        precursor_list = self._spec.precursors_lookup[process_name]
-        precursor = precursor_list[-1] if precursor_list else "root"
+        precursor_list = self._spec.get_precursors_lookup(incl_root=True)[process_name]
+        precursor = precursor_list[-1]
         precursor_path = self[precursor]
         if precursor_path is None:
             # TODO: update with some sort of path
@@ -49,15 +51,24 @@ class PathCache(HashCash):
     def get_run_id(self, process_name: str) -> str:
         return self._run_id_cache[process_name]
 
+    def get_shared_memory_view(self, exist_req: bool):
+        """
+        Get a shared memory accessor with option to modify `exist_req`
+        """
+        view = copy(self)
+        view._exists_req = exist_req
+        return view
+
     def _get(self, process_name: str) -> Optional[Path]:
         """
-        Gets `process_run_path` if `process_path` exists (else None). Attempts
+        Gets `process_run_path` if `process_path`. Attempts
         to retrieve the `run_id` it from `run_catalogue`, and generates it if
         one doesn't exist.
         """
         process_dir = self.get_process_dir(process_name)
-        if not process_dir.exists():
-            return None
+        if self._exists_req:
+            if not process_dir.exists():
+                return None
         run_id = self.get_run_id(process_name)
         if run_id is None:
             run_id = base64.urlsafe_b64encode(os.urandom(128))[:8].decode()
