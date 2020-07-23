@@ -142,7 +142,7 @@ class Spec(list):
             >>>     {
             >>>         "process": "reduce",
             >>>         "alias": "linear_dim_reduce",
-            >>>         "params": {
+            >>>         "subset": {
             >>>             "indication": "disease_1"
             >>>         }
             >>>     },
@@ -179,13 +179,13 @@ class Spec(list):
 
     def _build_run_spec_lookup(self) -> Dict[str, "RunSpec"]:
         """See class definition"""
-        process_lookup = dict()
+        run_spec_lookup = {"root": RunSpec({})}
         for run_spec in self:
             process_name = run_spec.name
-            if process_name in process_lookup:
+            if process_name in run_spec_lookup:
                 raise DuplicateProcessName(process_name)
-            process_lookup[process_name] = run_spec
-        return process_lookup
+            run_spec_lookup[process_name] = run_spec
+        return run_spec_lookup
 
     def _build_precursors_lookup(self) -> Dict[str, List[str]]:
         """See class definition"""
@@ -200,31 +200,32 @@ class Spec(list):
         """See class definition"""
         precursor_lookup = deepcopy(self._precursors_lookup)
         for process_name, precursors in precursor_lookup.items():
-            precursors.append(process_name)
+            if process_name not in precursors:
+                precursors.append(process_name)
         return precursor_lookup
 
     def _build_precursors_lookup_incl_root(self):
         """See class definition"""
         precursor_lookup = deepcopy(self._precursors_lookup)
         for process_name, precursors in precursor_lookup.items():
-            precursors.insert(0, "root")
+            if "root" not in precursors:
+                precursors.insert(0, "root")
         return precursor_lookup
 
     def _build_precursors_lookup_incl_root_curr(self):
         """See class definition"""
         precursor_lookup = deepcopy(self._precursors_lookup)
         for process_name, precursors in precursor_lookup.items():
-            precursors.insert(0, "root")
-            precursors.append(process_name)
+            if "root" not in precursors:
+                precursors.insert(0, "root")
+            if process_name not in precursors:
+                precursors.append(process_name)
         return precursor_lookup
 
     def __getitem__(self, item: Union[str, int]) -> "RunSpec":
         """Get `RunSpec` either via `int` index or `name`"""
         if not isinstance(item, int):
-            try:
-                return self._run_spec_lookup[item]
-            except Exception as e:
-                raise e
+            return self._run_spec_lookup[item]
         else:
             return super().__getitem__(item)
 

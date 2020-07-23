@@ -90,7 +90,7 @@ class DataForest:
         _reader_kwargs_map:
         _reader_method_map:
         _writer_kwargs_map:
-        _writer_method_map:n
+        _writer_method_map:
     """
 
     PLOT_METHODS: Type = PlotMethods
@@ -173,7 +173,7 @@ class DataForest:
             if self.unversioned:
                 self.logger.warning("Calling `at` on unversioned `DataForest`")
             self._current_process = process_name
-            self._meta = self._apply_data_ops(process_name)
+            self._meta = None
             new_path_map = self[self.current_process].path_map
             path_map_changes = {alias for alias, path in new_path_map.items() if prev_path_map.get(alias, None) != path}
             for file_alias in path_map_changes:

@@ -174,9 +174,15 @@ class ProcessRun:
         """
         spec = self.forest.spec
         precursor_lookup = spec.get_precursors_lookup(incl_current=incl_curr, incl_root=True)
-        process_runs = [self.forest[process_name] for process_name in precursor_lookup]
+        precursors = precursor_lookup[self.process_name]
+        process_runs = [self.forest[process_name] for process_name in precursors]
         process_path_map_list = [pr.process_path_map for pr in process_runs]
         path_map = dict()
         for process_path_map in process_path_map_list:
             path_map.update(process_path_map)
         return path_map
+
+    def __repr__(self):
+        repr_ = super().__repr__()[:-1]  # remove closing bracket to append
+        repr_ += f" process: {self.process}; process_name: {self.process_name}; done: {self.done}>"
+        return repr_
