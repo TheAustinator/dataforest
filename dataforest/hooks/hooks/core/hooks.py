@@ -92,8 +92,10 @@ def hook_catalogue(dp):
     catalogue_path = process_dir / "run_catalogue.tsv"
     df = pd.read_csv(catalogue_path, sep="\t", index_col="run_spec")
     if str(run_spec) not in df.index:
-        df = df.append({"run_spec": run_spec_str, "run_id": run_id}, ignore_index=True)
-        df.to_csv(catalogue_path, sep="\t", index=False)
+        new_entry = pd.DataFrame({"run_id": [run_id]}, index=[run_spec_str])
+        new_entry.index.name = "run_spec"
+        df = df.append(new_entry)
+        df.to_csv(catalogue_path, sep="\t")
     else:
         run_id_rows = df.loc[str(run_spec)]["run_id"]
         if not isinstance(run_id_rows, str):
