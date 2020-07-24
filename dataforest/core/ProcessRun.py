@@ -50,7 +50,7 @@ class ProcessRun:
         Gets additional metadata created by the current process, which is
         usually used to merge with the overall metadata.
         """
-        meta_path = self.path / "meta.tsv"
+        meta_path = self.path_map["meta"]
         df = None
         if meta_path.exists():
             df = pd.read_csv(meta_path, sep="\t", index_col=0)
