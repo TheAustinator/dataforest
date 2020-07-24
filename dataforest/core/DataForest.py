@@ -12,7 +12,7 @@ from dataforest.core.Spec import Spec
 from dataforest.filesystem.tree.Tree import Tree
 
 # from dataforest.hyperparams.HyperparameterMethods import HyperparameterMethods
-from dataforest.processes.core.BatchMethods import BatchMethods
+# from dataforest.processes.core.BatchMethods import BatchMethods
 from dataforest.plot.PlotMethods import PlotMethods
 from dataforest.processes.core.ProcessMethods import ProcessMethods
 from dataforest.core.schema.ProcessSchema import ProcessSchema
@@ -99,7 +99,7 @@ class DataForest:
     SPEC_CLASS: Type = Spec
     READER_METHODS: Type = ReaderMethods
     WRITER_METHODS: Type = WriterMethods
-    BATCH_METHODS: Type = BatchMethods
+    # BATCH_METHODS: Type = BatchMethods
     DATA_FILE_ALIASES: set = set()
     # HYPERPARAMETER_METHODS: Type = HyperparameterMethods
     READER_MAP: dict = dict()
