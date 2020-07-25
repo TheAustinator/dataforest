@@ -70,7 +70,7 @@ class PathCache(HashCash):
         one doesn't exist.
         """
         process_dir = self.get_process_dir(process_name)
-        if self._exists_req and process_dir.exists():
+        if self._exists_req and not process_dir.exists():
             return None
         run_id = self.get_run_id(process_name)
         if run_id is None:
