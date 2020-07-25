@@ -14,7 +14,7 @@ class ProcessSchema(metaclass=MetaProcessSchema):
     Class Attributes:
         FILE_MAP: mapping of `process_name`->`file_alias`->`filename`
             where the `file_alias` is the name by which the file will be
-            referenced in the `DataForest`.
+            referenced in the `DataBranch`.
             Examples:
                 {"process_1":
                    {"output_1": "arbitrary_filename.tsv.gz",

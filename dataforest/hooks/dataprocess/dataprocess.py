@@ -11,9 +11,9 @@ class dataprocess(metaclass=MetaDataProcess):
     Decorator which allows allows for a processes to work within the data_forest infrastructure.
     Each `data_process` is tied to two levels of subdirectory -- an outer directory which is named to match the processes
     and an inner directory which is named to capture relevant details of the processes run state
-    ✓ uses `ForestQuery` to generate directory names corresponding to `DataForest.spec`
+    ✓ uses `ForestQuery` to generate directory names corresponding to `DataBranch.spec`
     ✓ checks for `partition` in spec and sets it in data for `comparative` analyses
-    ✓ moves DataForest data selection to `process_name` using `at`
+    ✓ moves DataBranch data selection to `process_name` using `at`
     ✓ checks to ensure that specified input data is present
     - may make new tables and update them in the future
 
@@ -29,7 +29,7 @@ class dataprocess(metaclass=MetaDataProcess):
         **kwargs,
     ):
         self._name = None
-        self.forest = None
+        self.branch = None
         self.setup_hooks = setup_hooks if setup_hooks is not None else self.__class__.SETUP_HOOKS
         self.clean_hooks = clean_hooks if clean_hooks is not None else self.__class__.CLEAN_HOOKS
         self.setup_hooks = list(self.setup_hooks) + list(add_setup_hooks)
@@ -49,16 +49,16 @@ class dataprocess(metaclass=MetaDataProcess):
         self.process = func.__name__
 
         @wraps(func)
-        def wrapper(forest, run_name, *args, **kwargs):
+        def wrapper(branch, run_name, *args, **kwargs):
             """
             Runs setup hooks, then processes, then attempts each cleanup hook,
             raising any errors at the end.
             """
-            self.forest = forest
+            self.branch = branch
             self._name = run_name
             self._run_hooks(self.setup_hooks)
             try:
-                return func(self.forest, run_name, *args, **kwargs)
+                return func(self.branch, run_name, *args, **kwargs)
             except Exception as e:
                 raise e
             finally:

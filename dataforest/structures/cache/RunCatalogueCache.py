@@ -6,7 +6,7 @@ import pandas as pd
 import yaml
 
 from dataforest.core.Spec import Spec
-from dataforest.structures.cache.HashCache import HashCash
+from dataforest.structures.cache.HashCash import HashCash
 
 
 class RunCatalogCache(HashCash):

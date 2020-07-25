@@ -4,14 +4,14 @@ from typing import TYPE_CHECKING
 import matplotlib.pyplot as plt
 
 if TYPE_CHECKING:
-    from dataforest.core.DataForest import DataForest
+    from dataforest.core.DataBranch import DataBranch
 
 
 class BatchMethods:
     logger = logging.getLogger()
 
-    def __init__(self, forest: "DataForest"):
-        self.forest = forest
+    def __init__(self, branch: "DataBranch"):
+        self.branch = branch
 
     @staticmethod
     def plot_sweep(self, sweep_dict, process_name, plot_method):

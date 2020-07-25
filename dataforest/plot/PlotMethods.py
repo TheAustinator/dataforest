@@ -2,6 +2,6 @@ from dataforest.utils import tether
 
 
 class PlotMethods:
-    def __init__(self, forest: "DataForest"):
-        self.forest = forest
-        tether(self, "forest")
+    def __init__(self, branch: "DataBranch"):
+        self.branch = branch
+        tether(self, "branch")
