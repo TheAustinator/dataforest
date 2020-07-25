@@ -18,15 +18,15 @@ class AscensionError(TraversalError):
 
 
 class InputDataNotFound(FileNotFoundError):
-    def __init__(self, forest, requires, process_name):
-        self._forest = forest
+    def __init__(self, branch, requires, process_name):
+        self._branch = branch
         self._requires = requires
         self._process_name = process_name
 
     def __str__(self):
         return (
             f"Process `{self._process_name}` requires input data from `{self._requires}`. Not found at expected"
-            f"location: {self._forest.paths_exists[self._requires]} based on `forest.spec`: {self._forest._spec}"
+            f"location: {self._branch.paths_exists[self._requires]} based on `branch.spec`: {self._branch._spec}"
         )
 
 
@@ -36,7 +36,7 @@ class UnnecessaryKeysError(KeyError):
         self.process_name = process_name
 
     def __str__(self):
-        end_str = f" - {self.dict}. Please remove unnecessary keys from `DataForest`."
+        end_str = f" - {self.dict}. Please remove unnecessary keys from `DataBranch`."
         if self.process_name:
             str_ = f"Unnecessary key(s) for `process_name`: {self.process_name} "
         else:

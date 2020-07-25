@@ -1,6 +1,6 @@
 from typing import Dict, Callable
 
-from dataforest.structures.cache.HashCache import HashCash
+from dataforest.structures.cache.HashCash import HashCash
 from dataforest.filesystem.io.FileIO import FileIO
 
 

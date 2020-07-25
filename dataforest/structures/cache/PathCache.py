@@ -4,7 +4,7 @@ from copy import copy
 from pathlib import Path
 from typing import Optional
 
-from dataforest.structures.cache.HashCache import HashCash
+from dataforest.structures.cache.HashCash import HashCash
 from dataforest.core.Spec import Spec
 from dataforest.structures.cache.RunCatalogueCache import RunCatalogCache
 from dataforest.structures.cache.RunIdCache import RunIdCache
@@ -13,8 +13,9 @@ from dataforest.structures.cache.RunIdCache import RunIdCache
 class PathCache(HashCash):
     """
     Lazy loading path lookup by process_name. If the `ProcessRun` has not yet
-    been executed, a  Due to non-determinism of
-    `run_id` hashes, attempting to
+    been executed, a `run_id` is generated. Due to non-determinism of `run_id`
+    hashes, paths can only be calculated up to one process ahead of what has
+    been executed.
 
     Key (str): process name
 
@@ -41,7 +42,10 @@ class PathCache(HashCash):
         specific process run.
         """
         precursor_list = self._spec.get_precursors_lookup(incl_root=True)[process_name]
-        precursor = precursor_list[-1]
+        if precursor_list:
+            precursor = precursor_list[-1]
+        else:
+            raise ValueError('`precursor_list` is empty, should be at least ["root"]')
         precursor_path = self[precursor]
         if precursor_path is None:
             # TODO: update with some sort of path
@@ -66,9 +70,8 @@ class PathCache(HashCash):
         one doesn't exist.
         """
         process_dir = self.get_process_dir(process_name)
-        if self._exists_req:
-            if not process_dir.exists():
-                return None
+        if self._exists_req and process_dir.exists():
+            return None
         run_id = self.get_run_id(process_name)
         if run_id is None:
             run_id = base64.urlsafe_b64encode(os.urandom(128))[:8].decode()

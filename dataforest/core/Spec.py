@@ -73,9 +73,11 @@ class Spec(list):
         super().__init__([RunSpec(item) for item in spec])
         self._run_spec_lookup: Dict[str, "RunSpec"] = self._build_run_spec_lookup()
         self._precursors_lookup: Dict[str, List[str]] = self._build_precursors_lookup()
-        self._precursors_lookup_incl_curr: Dict[str, List[str]] = self._build_precursors_lookup_incl_curr()
-        self._precursors_lookup_incl_root: Dict[str, List[str]] = self._build_precursors_lookup_incl_root()
-        self._precursors_lookup_incl_root_curr: Dict[str, List[str]] = self._build_precursors_lookup_incl_root_curr()
+        self._precursors_lookup_incl_curr: Dict[str, List[str]] = self._build_precursors_lookup(incl_current=True)
+        self._precursors_lookup_incl_root: Dict[str, List[str]] = self._build_precursors_lookup(incl_root=True)
+        self._precursors_lookup_incl_root_curr: Dict[str, List[str]] = self._build_precursors_lookup(
+            incl_root=True, incl_current=True
+        )
         self.process_order: List[str] = [spec_item.name for spec_item in self]
 
     def copy(self) -> "Spec":
@@ -187,40 +189,21 @@ class Spec(list):
             run_spec_lookup[process_name] = run_spec
         return run_spec_lookup
 
-    def _build_precursors_lookup(self) -> Dict[str, List[str]]:
+    def _build_precursors_lookup(self, incl_root: bool = False, incl_current: bool = False) -> Dict[str, List[str]]:
         """See class definition"""
-        precursors = {"root": []}
         current_precursors = []
+        if incl_root and incl_current:
+            current_precursors = current_precursors + ["root"]
+        precursors = {"root": current_precursors}
+        if incl_root and not incl_current:
+            current_precursors = current_precursors + ["root"]
         for spec_item in self:
-            precursors[spec_item.name] = current_precursors.copy()
-            current_precursors.append(spec_item.name)
+            if incl_current:
+                current_precursors = current_precursors + [spec_item.name]
+            precursors[spec_item.name] = current_precursors
+            if not incl_current:
+                current_precursors = current_precursors + [spec_item.name]
         return precursors
-
-    def _build_precursors_lookup_incl_curr(self) -> Dict[str, List[str]]:
-        """See class definition"""
-        precursor_lookup = deepcopy(self._precursors_lookup)
-        for process_name, precursors in precursor_lookup.items():
-            if process_name not in precursors:
-                precursors.append(process_name)
-        return precursor_lookup
-
-    def _build_precursors_lookup_incl_root(self):
-        """See class definition"""
-        precursor_lookup = deepcopy(self._precursors_lookup)
-        for process_name, precursors in precursor_lookup.items():
-            if "root" not in precursors:
-                precursors.insert(0, "root")
-        return precursor_lookup
-
-    def _build_precursors_lookup_incl_root_curr(self):
-        """See class definition"""
-        precursor_lookup = deepcopy(self._precursors_lookup)
-        for process_name, precursors in precursor_lookup.items():
-            if "root" not in precursors:
-                precursors.insert(0, "root")
-            if process_name not in precursors:
-                precursors.append(process_name)
-        return precursor_lookup
 
     def __getitem__(self, item: Union[str, int]) -> "RunSpec":
         """Get `RunSpec` either via `int` index or `name`"""
@@ -244,7 +227,7 @@ class RunSpec(dict):
         alias (Optional[str]): given name, which is required when multiple of
             the same `process` are to exist in the same `Spec`
         params: parameters for `process`
-        subset, filter, partition: see dataforest.core.DataForest docs
+        subset, filter, partition: see dataforest.core.DataBranch docs
     """
 
     @property

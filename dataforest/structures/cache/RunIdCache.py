@@ -1,4 +1,4 @@
-from dataforest.structures.cache.HashCache import HashCash
+from dataforest.structures.cache.HashCash import HashCash
 from dataforest.utils.catalogue import run_id_from_multi_row
 
 

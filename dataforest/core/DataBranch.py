@@ -23,7 +23,7 @@ from dataforest.utils.loaders.update_config import update_config
 from dataforest.utils.utils import update_recursive
 
 
-class DataForest:
+class DataBranch:
     """
     # TODO: update
     NOTE: OUTDATED DOCSTRING
@@ -48,7 +48,7 @@ class DataForest:
     >>>             "partition": "treatment",    # partition
     >>>         }
     >>> }
-    >>> forest = DataForest(root_dir, spec)
+    >>> branch = DataBranch(root_dir, spec)
 
     Class Attributes:
         SCHEMA_CLASS: Point to a subclass of `ProcessSchema`
@@ -154,9 +154,9 @@ class DataForest:
         """
         return self._current_process
 
-    def goto_process(self, process_name: str) -> "DataForest":
+    def goto_process(self, process_name: str) -> "DataBranch":
         """
-        Updates the state of the `DataForest` object to reflect the
+        Updates the state of the `DataBranch` object to reflect the
         `ProcessRun` of `process_name` by:
             - clearing metadata cache so that it can be recalculated to include
                 only the metadata up to and including that for `process_name`
@@ -171,7 +171,7 @@ class DataForest:
         if self.current_process != process_name:
             prev_path_map = self[self.current_process].path_map if self.current_process else {}
             if self.unversioned:
-                self.logger.warning("Calling `at` on unversioned `DataForest`")
+                self.logger.warning("Calling `at` on unversioned `DataBranch`")
             self._current_process = process_name
             self._meta = None
             new_path_map = self[self.current_process].path_map
@@ -193,10 +193,10 @@ class DataForest:
         input_paths: Optional[Union[str, Path, Iterable[Union[str, Path]]]] = None,
         mode: Optional[str] = None,
         **kwargs,
-    ) -> "DataForest":
+    ) -> "DataBranch":
         """
         Combines multiple datasets into a root directory, which will be the
-        basis for downstream analysis. Then a DataForest is instantiated.
+        basis for downstream analysis. Then a DataBranch is instantiated.
         The input directories are specified either via
         Args:
             input_paths: list of input data directories
@@ -211,10 +211,10 @@ class DataForest:
     @classmethod
     def from_metadata(
         cls, root_dir: Union[str, Path], metadata: Optional[pd.DataFrame] = None, **kwargs,
-    ) -> "DataForest":
+    ) -> "DataBranch":
         """
         Combines multiple datasets into a root directory, which will be the
-        basis for downstream analysis. Then a DataForest is instantiated.
+        basis for downstream analysis. Then a DataBranch is instantiated.
         The input directories are specified either via
         Args:
             root_dir: root directory to deposit combined files
@@ -232,7 +232,7 @@ class DataForest:
         inst.set_meta(None)
         return inst
 
-    def copy_legacy(self, **kwargs) -> "DataForest":
+    def copy_legacy(self, **kwargs) -> "DataBranch":
         base_kwargs = self._get_copy_base_kwargs()
         kwargs = {**base_kwargs, **kwargs}
         kwargs = {k: deepcopy(v) for k, v in kwargs.items()}
@@ -261,10 +261,10 @@ class DataForest:
         return self._paths_exists
 
     def set_partition(self, process_name: Optional[str] = None, **kwargs):
-        """Get new DataForest with recursively updated `partition`"""
-        raise NotImplementedError("This method should be implemented by `DataForest` subclasses")
+        """Get new DataBranch with recursively updated `partition`"""
+        raise NotImplementedError("This method should be implemented by `DataBranch` subclasses")
 
-    def get_temp_meta_path(self: "DataForest", process_name: str):
+    def get_temp_meta_path(self: "DataBranch", process_name: str):
         return self[process_name].path / self.schema.__class__.TEMP_METADATA_FILENAME
 
     def __getitem__(self, process_name: str) -> ProcessRun:
