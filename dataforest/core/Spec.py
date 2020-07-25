@@ -1,147 +1,266 @@
 import json
 from copy import deepcopy
-from pprint import pprint
-from typing import Set, Union, Optional
+from typing import Union, List, Dict, Optional
 
-from pathlib import Path
-
-from dataforest.filesystem.core.DataTree import DataTree
-from dataforest.core.schema.ProcessSchema import ProcessSchema
-from dataforest.filesystem.core.Tree import Tree
-from dataforest.utils.utils import update_recursive
+from dataforest.utils.exceptions import DuplicateProcessName
+from dataforest.utils.utils import order_dict
 
 
-class Spec(dict):
+class Spec(list):
     """
-    Base class for specification of path through `process_run` for `DataForest` to
-    interface with data. Going deeper into the filesystem does not limit
-    the `DataForest`s ability to interface with data at earlier nodes so long as they
-    are along the same path.
+    Specification of a series of `RunSpec`s to be run sequentially, each of
+    which provide descriptors for a process run. If two runs of the same
+    process are present, they must be `alias`ed to prevent naming conflicts
+    (see example). For details on keys in each encapsulated `dict`, see
+    `RunSpec`.
+    Args:
+        spec: core representation which this class wraps
     Examples:
-        {
-          "process_1": {
-            "param_1": 10,
-            "param_2": "max",
-            "version": (1.05, 1.06, 1.07, 1.08, 1.09),
-          "process_2": {
-            "alpha": 0.05,
-            "thresh": 2.0,
-            "filter": {"version": 1.07},
-        "filter": {"version": 1.07},
-        }
-
-        In this example, `process_1` is fed two parameters, and also "version"
-        as a `subset`. So the data that is fed to `process_2` is also `subset`
-        by "version". However, `process_2` further excluded `version=1.07`
-        using a `filter`. 1.07 will be excluded from the outputs of `process_2`
-        and any downstream processes, but it won't be excluded from any
-        upstream data that we want to combine with the `process_2` outputs,
-        so the `filter` is also specified at the root level so that it can
-        be excluded either manually or in any data access methods of `DataForest`
-        subclasses.
+        >>> # NOTE: conceptual illustration only, not real processes
+        >>> spec = [
+        >>>     {
+        >>>         "process": "normalize",
+        >>>         "params": {
+        >>>             "min_genes": 5,
+        >>>             "max_genes": 5000,
+        >>>             "min_cells": 5,
+        >>>             "nfeatures": 30,
+        >>>             "perc_mito_cutoff": 20,
+        >>>             "method": "seurat_default",
+        >>>         }
+        >>>         "subset": {
+        >>>             "indication": {"disease_1", "disease_3"},
+        >>>             "collection_center": "mass_general",
+        >>>         },
+        >>>         "filter": {
+        >>>             "donor": "D115"
+        >>>         }
+        >>>     },
+        >>>     {
+        >>>         "process": "reduce",    # dimensionality reduction
+        >>>         "alias": "linear_dim_reduce",
+        >>>         "params": {
+        >>>             "algorithm": "pca",
+        >>>             "n_pcs": 30,
+        >>>         }
+        >>>     },
+        >>>     {
+        >>>         "process": "reduce",
+        >>>         "alias": "nonlinear_dim_reduce",
+        >>>         "params": {
+        >>>             "algorithm": "umap",
+        >>>             "n_neighbors": 15,
+        >>>             "min_dist": 0.1,
+        >>>             "n_components": 2,
+        >>>             "metric": "euclidean"
+        >>>         }
+        >>>     }
+        >>> ]
+        >>> spec = Spec(spec)
+        Attributes:
+            _run_spec_lookup: used for `RunSpec` lookup by process_name rather
+                than int index
+            _precursors_lookup{...}:
+                {...}: suffix determines whether "root" and the current_process
+                    (key) will be included
+                Key: process_name (e.g. "cluster")
+                Value: list of precursor processes (e.g. ["root", "normalize",
+                    "reduce", "cluster] for {_incl_root_curr}
+            process_order:
     """
 
-    DEFAULT_SPEC = {}
-
-    def __init__(self, data_map, schema: ProcessSchema, spec_dict=None):
-        super().__init__()
-        self.update(deepcopy(self.DEFAULT_SPEC))
-        # self.get_matching_branches(data_map, schema, spec_dict)
-        # spec_dict = Tree(spec_dict).str_replace_leaves(" ", "_").dict
-        update_recursive(self, spec_dict, inplace=True)
-        # TODO: these won't be updated dynamically
-        self._process_spec_dict = self.get_process_spec_dict(self, schema)
-        self._subset_dict = self.get_subset_dict(self, schema)
-        self._filter_dict = self.get("filter", dict())
-        self._partition_set = self.get("partition", dict())
-
-    @property
-    def process_spec_dict(self) -> dict:
-        return self._process_spec_dict
-
-    @property
-    def subset_dict(self) -> dict:
-        return self._subset_dict
-
-    @property
-    def filter_dict(self) -> dict:
-        return self._filter_dict
-
-    @property
-    def partition_set(self) -> Set[str]:
-        return self._partition_set
-
-    @classmethod
-    def from_str(cls, path: Union[str, Path], data_dir: Union[str, Path]):
-        spec = dict()
-        rel_path = Path(path).relative_to(data_dir)
-        parts = rel_path.parts
-        for (process_name, process_str) in zip(parts[::2], parts[1::2]):
-            spec[process_name] = DataTree.from_str(process_str, []).simple
-        return spec
-
-    def get_matching_branches(self, data_map, schema, spec_dict):
-        # TODO: get working
-        precursor_dict = schema.process_precursors
-        process_spec_dict = {k: v for k, v in spec_dict.items() if k in precursor_dict}
-        process_spec_tree = Tree(process_spec_dict).apply_leaves(str)  # convert keys and values to strings
-        spec_depth = max([len(precursor_dict[name]) + 1 for name in process_spec_dict] + [0])
-        if spec_depth == 0:
-            return
-        isodepth_branches = [branch for branch in data_map if len(branch) == spec_depth]
-        matches = [branch for branch in isodepth_branches if process_spec_tree.issubset(branch)]
-        match = None
-        if not matches:
-            pprint(isodepth_branches)
-            raise ValueError(f"No branches matching spec. Available branches of the same depth: {isodepth_branches}")
-        elif len(matches) == 1:
-            match = matches[0]
-        else:
-            for candidate in matches:
-                if candidate == process_spec_dict:
-                    match = candidate
-        if match is None:
-            variable_paths = Tree(matches[0]).variable_paths(matches[1:])
-            pprint(isodepth_branches)
-            raise ValueError(f"Underspecified. Must discriminate between {variable_paths}")
-        self.update(match)
-
-    def print(self):
-        def set_to_list(x):
-            if isinstance(x, set):
-                return list(x)
-            return x
-
-        dict_ = Tree(self).apply_leaves(set_to_list).dict
-        print(json.dumps(dict_, indent=4))
+    def __init__(self, spec: Union[List[dict], "Spec[RunSpec]"]):
+        super().__init__([RunSpec(item) for item in spec])
+        self._run_spec_lookup: Dict[str, "RunSpec"] = self._build_run_spec_lookup()
+        self._precursors_lookup: Dict[str, List[str]] = self._build_precursors_lookup()
+        self._precursors_lookup_incl_curr: Dict[str, List[str]] = self._build_precursors_lookup(incl_current=True)
+        self._precursors_lookup_incl_root: Dict[str, List[str]] = self._build_precursors_lookup(incl_root=True)
+        self._precursors_lookup_incl_root_curr: Dict[str, List[str]] = self._build_precursors_lookup(
+            incl_root=True, incl_current=True
+        )
+        self.process_order: List[str] = [spec_item.name for spec_item in self]
 
     def copy(self) -> "Spec":
         return deepcopy(self)
 
-    @staticmethod
-    def get_process_spec_dict(dict_: Union[dict, "Spec"], schema: ProcessSchema):
-        return {k: v for k, v in dict_.items() if k in schema.__class__.PROCESS_NAMES}
+    def get_precursors_lookup(self, incl_current: bool = False, incl_root: bool = False) -> Dict[str, List[str]]:
+        """
+        Gets a lookup of process_name precursors
+        Args:
+            incl_current: include key process_name in value list
+            incl_root: include root in value list
 
-    @staticmethod
-    def get_subset_dict(
-        dict_: Union[dict, "Spec"], schema: ProcessSchema, process_name: Optional[str] = None,
-    ):
-        if process_name:
-            keys_exclude = schema.param_names[process_name]
-            dict_ = dict_[process_name]
+        Examples:
+            >>> precursors_lookup = self.get_precursors_lookup(incl_current=True, incl_root=True)
+            >>> precursors_lookup["cluster"]
+            >>> ["root", "normalize", "reduce", "cluster"]
+        """
+        if incl_root and incl_current:
+            return self._precursors_lookup_incl_root_curr
+        elif incl_root:
+            return self._precursors_lookup_incl_root
+        elif incl_current:
+            return self._precursors_lookup_incl_curr
         else:
-            keys_exclude = Spec.get_process_spec_dict(dict_, schema)
-        return {k: v for k, v in dict_.items() if (k not in ("filter", "partition")) and (k not in keys_exclude)}
+            return self._precursors_lookup
 
-    @staticmethod
-    def get_filter_dict(dict_: Union[dict, "Spec"], process_name: Optional[str] = None):
+    def get_subset_list(self, process_name: str) -> List[dict]:
+        """See `_get_data_operation_list`"""
+        return self._get_data_operation_list(process_name, "subset")
+
+    def get_filter_list(self, process_name: str) -> List[dict]:
+        """See `_get_data_operation_list`"""
+        return self._get_data_operation_list(process_name, "filter")
+
+    def get_partition_list(self, process_name: str) -> List[set]:
+        """See `_get_data_operation_list`"""
+        return self._get_data_operation_list(process_name, "partition")
+
+    def _get_data_operation_list(self, process_name: str, operation_name: str) -> List[Union[dict, set]]:
+        """
+        Get a list of data operations of a specified type for processes up to
+        and including that specified by `process_name`.
+        Args:
+            process_name: last process for which to retrieve data operations
+                (usually the process you're at/running)
+            operation_name: from {subset, filter, partition}
+
+        Returns:
+            operation_list:
+
+        Examples:
+            >>> spec = [
+            >>>     {
+            >>>         "process": "normalize",
+            >>>         "params": {}
+            >>>         "subset": {
+            >>>             "indication": {"disease_1", "disease_3"},
+            >>>             "collection_center": "mass_general",
+            >>>         },
+            >>>         "filter": {
+            >>>             "donor": "D115"
+            >>>         }
+            >>>     },
+            >>>     {
+            >>>         "process": "reduce",
+            >>>         "alias": "linear_dim_reduce",
+            >>>         "subset": {
+            >>>             "indication": "disease_1"
+            >>>         }
+            >>>     },
+            >>>     {
+            >>>         "process": "reduce",
+            >>>         "alias": "nonlinear_dim_reduce",
+            >>>         "params": {}
+            >>>         "subset": {
+            >>>             "sample_date": "20200115"
+            >>>         }
+            >>>     }
+            >>> ]
+            >>> spec = Spec(spec)
+            >>> subset_list = spec._get_data_operation_list("linear_dim_reduce", "subset")
+            >>> subset_list
+            >>> [
+            >>>     {
+            >>>         "indication": {"disease_1", "disease_3"},
+            >>>         "collection_center": "mass_general",
+            >>>     },
+            >>>     {
+            >>>         "indication": "disease_1"
+            >>>     }
+            >>> ]
+        """
+        operation_list = []
         if process_name:
-            return dict_[process_name].get("filter", dict())
-        else:
-            return dict_.get("filter", dict())
+            process_name_list = self.get_precursors_lookup(incl_current=True)[process_name]
+            for precursor_name in process_name_list:
+                run_spec = self[precursor_name]
+                operation = getattr(run_spec, operation_name)
+                operation_list.append(operation)
+        return operation_list
 
-    def __getitem__(self, item):
-        try:
+    def _build_run_spec_lookup(self) -> Dict[str, "RunSpec"]:
+        """See class definition"""
+        run_spec_lookup = {"root": RunSpec({})}
+        for run_spec in self:
+            process_name = run_spec.name
+            if process_name in run_spec_lookup:
+                raise DuplicateProcessName(process_name)
+            run_spec_lookup[process_name] = run_spec
+        return run_spec_lookup
+
+    def _build_precursors_lookup(self, incl_root: bool = False, incl_current: bool = False) -> Dict[str, List[str]]:
+        """See class definition"""
+        current_precursors = []
+        if incl_root and incl_current:
+            current_precursors = current_precursors + ["root"]
+        precursors = {"root": current_precursors}
+        if incl_root and not incl_current:
+            current_precursors = current_precursors + ["root"]
+        for spec_item in self:
+            if incl_current:
+                current_precursors = current_precursors + [spec_item.name]
+            precursors[spec_item.name] = current_precursors
+            if not incl_current:
+                current_precursors = current_precursors + [spec_item.name]
+        return precursors
+
+    def __getitem__(self, item: Union[str, int]) -> "RunSpec":
+        """Get `RunSpec` either via `int` index or `name`"""
+        if not isinstance(item, int):
+            return self._run_spec_lookup[item]
+        else:
             return super().__getitem__(item)
-        except KeyError:
-            raise KeyError(f"Process `{item}` not in spec root level keys: {list(self.keys())}")
+
+    def __setitem__(self, k, v):
+        raise ValueError("Cannot set items dynamically. All items must be defined at init")
+
+    def __contains__(self, item):
+        return item in self._run_spec_lookup
+
+
+class RunSpec(dict):
+    """
+    Specification to run a single process.
+    Keys:
+        process (str): name of the `dataprocess` decorated function to execute
+        alias (Optional[str]): given name, which is required when multiple of
+            the same `process` are to exist in the same `Spec`
+        params: parameters for `process`
+        subset, filter, partition: see dataforest.core.DataBranch docs
+    """
+
+    @property
+    def name(self) -> str:
+        return self.get("alias", self["process"])
+
+    @property
+    def process(self) -> str:
+        return self["process"]
+
+    @property
+    def alias(self) -> Optional[str]:
+        return self.get("alias", None)
+
+    @property
+    def params(self) -> dict:
+        return self.get("params", {})
+
+    @property
+    def subset(self) -> dict:
+        return self.get("subset", {})
+
+    @property
+    def filter(self) -> dict:
+        return self.get("filter", {})
+
+    @property
+    def partition(self) -> dict:
+        return self.get("partition", {})
+
+    def ordered(self) -> dict:
+        """Order dict alphabetically for deterministic string representation"""
+        return order_dict(self)
+
+    def __str__(self):
+        return str(self.ordered())

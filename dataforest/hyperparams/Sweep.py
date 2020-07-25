@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 if TYPE_CHECKING:
-    from dataforest.core.DataForest import DataForest
+    from dataforest.core.DataBranch import DataBranch
 
 
 class Sweep:
@@ -17,23 +17,23 @@ class Sweep:
     DEFAULT_SUBPLOT_SIZE = np.array((5, 5))
 
     def __init__(
-        self, base_forest: "DataForest", sweep_dict: Dict[str, Dict[str, Any]], combinatorial: int = False,
+        self, base_branch: "DataBranch", sweep_dict: Dict[str, Dict[str, Any]], combinatorial: int = False,
     ):
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.base_forest = base_forest
+        self.base_branch = base_branch
         self.sweep_dict = sweep_dict
         self.combinatorial = combinatorial
-        self._forest_matrix = None
+        self._branch_matrix = None
         self._param_matrix = None
 
     @property
-    def forest_matrix(self):
-        if self._forest_matrix is None:
+    def branch_matrix(self):
+        if self._branch_matrix is None:
             if self.combinatorial:
                 self._build_matrices_combinatorial()
             else:
                 self._build_matrices()
-        return self._forest_matrix
+        return self._branch_matrix
 
     @property
     def param_matrix(self):
@@ -50,7 +50,7 @@ class Sweep:
 
     @property
     def shape(self):
-        return self.forest_matrix.shape
+        return self.branch_matrix.shape
 
     def run(
         self,
@@ -62,15 +62,15 @@ class Sweep:
         if not method_kwargs:
             method_kwargs = len(methods) * [dict()]
         for (i, j) in self.indices:
-            forest = self.forest_matrix[i, j]
-            if forest is None:
+            branch = self.branch_matrix[i, j]
+            if branch is None:
                 continue
             if skip_if_done:
-                if forest[skip_if_done].done:
+                if branch[skip_if_done].done:
                     continue
             for (method, kwargs) in zip(methods, method_kwargs):
                 try:
-                    method(forest, **kwargs)
+                    method(branch, **kwargs)
                 except Exception as e:
                     if stop_on_error:
                         raise e
@@ -90,36 +90,37 @@ class Sweep:
             figsize = tuple(self.DEFAULT_SUBPLOT_SIZE * np.array(self.shape))
         fig, ax = plt.subplots(*self.shape, sharex="col", sharey="row", figsize=figsize)
         for (i, j) in self.indices:
-            forest = self.forest_matrix[i, j]
-            if forest is None:
+            branch = self.branch_matrix[i, j]
+            if branch is None:
                 continue
             params = self.param_matrix[i, j]
             plot = ax[i, j]
             plot.set_title(str(params))
-            plot_method(forest, ax=plot, **plot_method_kwargs)
+            plot_method(branch, ax=plot, **plot_method_kwargs)
+        return fig
 
     def _build_matrices(self):
-        forest_matrix = list()
+        branch_matrix = list()
         param_matrix = list()
         for process_name, param_dict in self.sweep_dict.items():
             for param_name, param_values in param_dict.items():
-                forest_row = list()
+                branch_row = list()
                 param_row = list()
                 for value in param_values:
-                    spec = self.base_forest.spec.copy()
+                    spec = self.base_branch.spec.copy()
                     spec[process_name][param_name] = value
-                    forest = self.base_forest.copy(spec_dict=spec)
-                    forest_row.append(forest)
+                    branch = self.base_branch.copy(spec=spec)
+                    branch_row.append(branch)
                     param_row.append({param_name: value})
-                forest_matrix.append(forest_row)
+                branch_matrix.append(branch_row)
                 param_matrix.append(param_row)
-        self._fill_rows(forest_matrix)
+        self._fill_rows(branch_matrix)
         self._fill_rows(param_matrix)
-        self._forest_matrix = np.array(forest_matrix)
+        self._branch_matrix = np.array(branch_matrix)
         self._param_matrix = np.array(param_matrix)
 
     def _build_matrices_combinatorial(self):
-        forest_matrix = list()
+        branch_matrix = list()
         param_matrix = list()
         assert len(self.sweep_dict) == 1
         for process_name, param_dict in self.sweep_dict.items():
@@ -128,18 +129,18 @@ class Sweep:
             (name_1, value_list_1) = sweep_params.pop()
             (name_2, value_list_2) = sweep_params.pop()
             for value_1 in value_list_1:
-                forest_row = list()
+                branch_row = list()
                 param_row = list()
                 for value_2 in value_list_2:
-                    spec = self.base_forest.spec.copy()
+                    spec = self.base_branch.spec.copy()
                     spec[process_name][name_1] = value_1
                     spec[process_name][name_2] = value_2
-                    forest = self.base_forest.copy(spec_dict=spec)
-                    forest_row.append(forest)
+                    branch = self.base_branch.copy(spec=spec)
+                    branch_row.append(branch)
                     param_row.append({name_1: value_1, name_2: value_2})
-                forest_matrix.append(forest_row)
+                branch_matrix.append(branch_row)
                 param_matrix.append(param_row)
-        self._forest_matrix = np.array(forest_matrix)
+        self._branch_matrix = np.array(branch_matrix)
         self._param_matrix = np.array(param_matrix)
 
     @staticmethod

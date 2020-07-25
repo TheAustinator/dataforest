@@ -1,6 +1,6 @@
 import pytest
 
-from dataforest.filesystem.core.DataTree import DataTree
+from dataforest.filesystem.tree.DataTree import DataTree
 
 
 @pytest.fixture

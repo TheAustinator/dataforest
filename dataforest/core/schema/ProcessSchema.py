@@ -1,9 +1,8 @@
-from typing import Callable, Dict, Optional, Set, Tuple, Union
+from typing import Callable, Dict, Optional, Set, Tuple, Union, Iterable
 
 from pathlib import Path
 
 from dataforest.core.schema.MetaProcessSchema import MetaProcessSchema
-from dataforest.utils.utils import node_lineage_lookup
 
 
 class ProcessSchema(metaclass=MetaProcessSchema):
@@ -15,16 +14,11 @@ class ProcessSchema(metaclass=MetaProcessSchema):
     Class Attributes:
         FILE_MAP: mapping of `process_name`->`file_alias`->`filename`
             where the `file_alias` is the name by which the file will be
-            referenced in the `DataForest`.
+            referenced in the `DataBranch`.
             Examples:
                 {"process_1":
                    {"output_1": "arbitrary_filename.tsv.gz",
                     ...},
-                 ...}
-
-        PARAM_NAMES: lookup of param names for `process_names`
-            Examples:
-                {"process_1": {"alpha", "bias", ...},
                  ...}
 
         PROCESS_HIERARCHY: a nested `dict` which represents the processes
@@ -61,8 +55,6 @@ class ProcessSchema(metaclass=MetaProcessSchema):
             Examples: {"max_size": (operators.le, "size")
 
     Attributes:
-        param_names: copy of `PARAM_NAMES` unless specified
-        process_hierarchy: copy of `PROCESS_HIERARCHY` unless specified
         process_precursors: lookup of sequence of upstream processes for
             `process_name`s
             Example:
@@ -78,20 +70,12 @@ class ProcessSchema(metaclass=MetaProcessSchema):
 
     def __init__(
         self,
-        param_names: Optional[Union[str, Path, Union[Dict[str, Set[str]]]]] = None,
-        process_hierarchy: Optional[Union[str, Path, dict]] = None,
         root_dir: Optional[Union[str, Path]] = None,
         subset_proxies: Optional[Dict[str, Tuple[Callable, str]]] = None,
         file_map: Optional[Union[Dict[str, Dict[str, str]], str, Path]] = None,
-        process_names: Optional[Union[str, Path, Set[str]]] = None,
     ):
-        self.param_names = param_names if param_names is not None else self.__class__.PARAM_NAMES.copy()
-        self.process_hierarchy = (
-            process_hierarchy if process_hierarchy is not None else self.__class__.PROCESS_HIERARCHY.copy()
-        )
-        self.process_precursors = node_lineage_lookup(self.__class__.PROCESS_HIERARCHY)
+        # TODO: QUEUE allow these params to be passed to dataforest
         self.subset_proxies = subset_proxies if subset_proxies is not None else self.__class__.SUBSET_PROXIES.copy()
         self.file_map = file_map if file_map is not None else self.__class__.FILE_MAP.copy()
-        self.process_names = process_names if process_names is not None else self.__class__.PROCESS_NAMES.copy()
         if root_dir is not None:
             self.root_dir = root_dir

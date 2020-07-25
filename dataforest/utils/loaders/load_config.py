@@ -10,10 +10,10 @@ def load_config(config: Union[dict, str, Path]):
     if isinstance(config, (str, Path)):
         config = Path(config)
         if config.suffix == ".json":
-            with open(config, "r") as f:
+            with open(str(config), "r") as f:
                 config = json.load(f)
         elif config.suffix == ".yaml":
-            with open(config, "r") as f:
+            with open(str(config), "r") as f:
                 config = yaml.load(f, yaml.FullLoader)
         else:
             raise ValueError("If filepath is passed, must be .json or .yaml")

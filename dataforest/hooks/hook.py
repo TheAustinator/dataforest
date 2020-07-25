@@ -23,8 +23,8 @@ class hook:
 
     def _wrap(self, func):
         def wrapper(dp):
-            attrs = getattr(self, "attrs", [])
-            if all([hasattr(dp.forest, attr) for attr in attrs]):
+            attrs = getattr(self, "_attrs", [])
+            if all([hasattr(dp, attr) for attr in attrs]):
                 return func(dp)
 
         if self._no_attrs:
