@@ -35,7 +35,7 @@ class DataBranch:
     data. `subset`s specify criteria for inclusion, `filter`s specify criteria
     for exclusion, and `partition`s specify criteria for partitioning in
     comparative analyses.
-    >>> root_dir = "/data/root:dataset_1"
+    >>> root = "/data/root:dataset_1"
     >>> spec = {
     >>>     "process_1":
     >>>         {
@@ -48,7 +48,7 @@ class DataBranch:
     >>>             "partition": "treatment",    # partition
     >>>         }
     >>> }
-    >>> branch = DataBranch(root_dir, spec)
+    >>> branch = DataBranch(root, spec)
 
     Class Attributes:
         SCHEMA_CLASS: Point to a subclass of `ProcessSchema`
@@ -108,7 +108,7 @@ class DataBranch:
     WRITER_KWARGS_MAP: dict = dict()
     _METADATA_NAME: dict = NotImplementedError("Should be implemented by superclass")
     _COPY_KWARGS: dict = {
-        "root_dir": "root_dir",
+        "root": "root",
         "spec": "spec",
         "verbose": "verbose",
         "current_process": "current_process",
@@ -117,11 +117,12 @@ class DataBranch:
 
     def __init__(
         self,
-        root_dir: Union[str, Path],
+        root: Union[str, Path],
         spec: Optional[List[dict]] = None,
         verbose: bool = False,
         config: Optional[Union[dict, str, Path]] = None,
         current_process: Optional[str] = None,
+        remote_root: Optional[str, Path] = None,
     ):
         if config is not None:
             update_config(config)
@@ -130,7 +131,8 @@ class DataBranch:
         self._meta = None
         self._unversioned = False
         self._current_process = current_process
-        self.root_dir = Path(root_dir)
+        self._remote_root = remote_root
+        self.root = Path(root)
         self.spec = self._init_spec(spec)
         self.verbose = verbose
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -138,7 +140,7 @@ class DataBranch:
         self.process = self.PROCESS_METHODS(self, self.spec)
         # self.hyper = HyperparameterMethods(self)
         self.schema = self.SCHEMA_CLASS()
-        self._paths_exists = PathCache(self.root_dir, self.spec, exists_req=True)
+        self._paths_exists = PathCache(self.root, self.spec, exists_req=True)
         self._paths = self._paths_exists.get_shared_memory_view(exist_req=False)
         self._process_runs = dict()
         # TODO:
@@ -153,6 +155,18 @@ class DataBranch:
         change this property.
         """
         return self._current_process
+
+    @property
+    def remote_root(self) -> Optional[Union[str, Path]]:
+        """
+        Location of remote root to push to. Not required, only if you'd like to
+        sync between local and remote.
+        """
+        return self._remote_root
+
+    @remote_root.setter
+    def remote_root(self, val):
+        self._remote_root = val
 
     def goto_process(self, process_name: str) -> "DataBranch":
         """
@@ -183,13 +197,13 @@ class DataBranch:
         return self
 
     @classmethod
-    def load(cls, root_dir, **kwargs):
-        return cls(root_dir, **kwargs)
+    def load(cls, root, **kwargs):
+        return cls(root, **kwargs)
 
     @classmethod
     def from_input_dirs(
         cls,
-        root_dir: Union[str, Path],
+        root: Union[str, Path],
         input_paths: Optional[Union[str, Path, Iterable[Union[str, Path]]]] = None,
         mode: Optional[str] = None,
         **kwargs,
@@ -200,37 +214,114 @@ class DataBranch:
         The input directories are specified either via
         Args:
             input_paths: list of input data directories
-            root_dir: root directory to deposit combined files
+            root: root directory to deposit combined files
         """
         if not isinstance(input_paths, (list, tuple)):
             input_paths = [input_paths]
-        additional_kwargs = cls._combine_datasets(root_dir, input_paths=input_paths, mode=mode)
+        additional_kwargs = cls._combine_datasets(root, input_paths=input_paths, mode=mode)
         kwargs = {**additional_kwargs, **kwargs}
-        return cls(root_dir, **kwargs)
+        return cls(root, **kwargs)
 
     @classmethod
-    def from_metadata(
-        cls, root_dir: Union[str, Path], metadata: Optional[pd.DataFrame] = None, **kwargs,
+    def from_sample_metadata(
+        cls, root: Union[str, Path], metadata: Optional[pd.DataFrame] = None, **kwargs,
     ) -> "DataBranch":
         """
         Combines multiple datasets into a root directory, which will be the
         basis for downstream analysis. Then a DataBranch is instantiated.
         The input directories are specified either via
         Args:
-            root_dir: root directory to deposit combined files
+            root: root directory to deposit combined files
             metadata: path to metadata, where each row corresponds to a
                 single dataset from `input_dirs`. The only column which must
                 be present is `path`, which must be matched to the elements of
                 `input_dirs`
         """
-        additional_kwargs = cls._combine_datasets(root_dir, metadata=metadata)
+        additional_kwargs = cls._combine_datasets(root, metadata=metadata)
         kwargs = {**additional_kwargs, **kwargs}
-        return cls(root_dir, **kwargs)
+        return cls(root, **kwargs)
 
-    def copy(self):
-        inst = deepcopy(self)
-        inst.set_meta(None)
-        return inst
+    @property
+    def meta(self) -> pd.DataFrame:
+        """
+        Interface for cell metadata, which is derived from the sample
+        metadata and the scrnaseq experimental data. Available UMAP embeddings
+        and cluster identifiers will be included, and the data will be subset,
+        filtered, and partitioned based on the specifications in `self.spec`.
+        Primarily for this reason, this is the preferred interface to metadata
+        over direct file access.
+        """
+        if self._meta is None:
+            self._meta = self._get_meta(self.current_process)
+        return self._meta
+
+    def fork(self, spec: Union[list, Spec]) -> "DataBranch":
+        """
+        "Forks" the current branch to create a copy with an altered spec, but
+        the same arguments otherwise.
+        Args:
+            spec: new spec with which the "forked" branch is to be created
+
+        Returns:
+            branch: new branch
+        """
+        branch = self.copy(spec=spec)
+        return branch
+
+    def pull(self, local_root: Union[str, Path]) -> "DataBranch":
+        """
+        Copies a branch to a local root directory, reconciling with existing
+        local data.
+        Args:
+            local_root: local root to which
+
+        Returns:
+            branch: new branch with the `root` attribute changed to the local
+                root and `remote_root` set to the prior `root`
+        """
+        self._merge(local_root)
+
+    def push(self, remote_root: Optional[Union[str, Path]]):
+        """
+        Pushes a branch to a remote root directory, reconciling with existing
+        remote data.
+        Args:
+            remote_root: path to remote dir. Should be mounted path
+                (e.g. `/s3/sequencing/my_root`).
+        """
+        remote_root = remote_root if remote_root else self.remote_root
+        if not remote_root:
+            # TODO: make version control error
+            raise ValueError(
+                f"No remote root path to push to provided. Either `DataBranch.remote_root` must be set, or "
+                f"`remote_root` must be passed to `DataBranch.push`"
+            )
+        self._merge(remote_root)
+
+    def _merge(self, root_into: Union[str, Path]):
+        """
+        Merges current branch into the the DataForest (set of branches) at a
+        different root directory. Any conflicting data and `run_catalogue`s
+        entries are overwritten
+        Args:
+            root_into: root directory other than `self.root`, into which
+                the current branch's data is to be merged.
+        """
+        root_into = Path(root_into)
+        self._check_root_meta_match(root_into)
+
+        # TODO: if root metadata, check that it's the same
+        # TODO: goto each process in chain and get file map
+        # TODO: update `done` to use something besides logs
+        # TODO: copy file map, evaluate all elements for `done` processes
+        # TODO: reconcile and register each process in run_catalogue
+        # TODO: replace roots with `remote_root`
+        # TODO: copy files
+
+        raise NotImplementedError()
+
+    def copy(self, **kwargs):
+        return self.__class__(**kwargs)
 
     def copy_legacy(self, **kwargs) -> "DataBranch":
         base_kwargs = self._get_copy_base_kwargs()
@@ -276,9 +367,12 @@ class DataBranch:
             self._process_runs[process_name] = ProcessRun(self, process_name, process)
         return self._process_runs[process_name]
 
+    def _get_meta(self, process_name):
+        raise NotImplementedError("This method should be implemented by `DataBranch` subclasses")
+
     @staticmethod
     def _combine_datasets(
-        root_dir: Union[str, Path],
+        root: Union[str, Path],
         metadata: Optional[Union[str, Path]] = None,
         input_paths: Optional[List[Union[str, Path]]] = None,
         mode: Optional[str] = None,
@@ -417,3 +511,13 @@ class DataBranch:
         if not isinstance(spec, Spec):
             spec = self.SPEC_CLASS(spec)
         return spec
+
+    def _check_root_meta_match(self, root_other: Path):
+        root_into_empty = (root_other / "meta.tsv").exists()
+        if not root_into_empty:
+            pd_kwargs = {"sep": "\t", "index_col": 0}
+            meta = pd.read_csv(self["root"].path_map["meta"], **pd_kwargs)
+            # TODO: hardcoded filename
+            meta_other = pd.read_csv(root_other / "meta.tsv", **pd_kwargs)
+            if not meta.equals(meta_other):
+                raise ValueError("Cannot merge branches with two different metadata files at root")

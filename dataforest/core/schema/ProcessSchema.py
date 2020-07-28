@@ -64,18 +64,18 @@ class ProcessSchema(metaclass=MetaProcessSchema):
                    'process_3_v1': ['process_1', 'process_2'],
                    ...
                 }
-        root_dir: copy of ROOT_DIR
+        root: copy of ROOT_DIR
         subset_proxies:
     """
 
     def __init__(
         self,
-        root_dir: Optional[Union[str, Path]] = None,
+        root: Optional[Union[str, Path]] = None,
         subset_proxies: Optional[Dict[str, Tuple[Callable, str]]] = None,
         file_map: Optional[Union[Dict[str, Dict[str, str]], str, Path]] = None,
     ):
         # TODO: QUEUE allow these params to be passed to dataforest
         self.subset_proxies = subset_proxies if subset_proxies is not None else self.__class__.SUBSET_PROXIES.copy()
         self.file_map = file_map if file_map is not None else self.__class__.FILE_MAP.copy()
-        if root_dir is not None:
-            self.root_dir = root_dir
+        if root is not None:
+            self.root = root
