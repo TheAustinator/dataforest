@@ -35,7 +35,7 @@ class DataBranch:
     data. `subset`s specify criteria for inclusion, `filter`s specify criteria
     for exclusion, and `partition`s specify criteria for partitioning in
     comparative analyses.
-    >>> root_dir = "/data/root:dataset_1"
+    >>> root = "/data/root:dataset_1"
     >>> spec = {
     >>>     "process_1":
     >>>         {
@@ -48,7 +48,7 @@ class DataBranch:
     >>>             "partition": "treatment",    # partition
     >>>         }
     >>> }
-    >>> branch = DataBranch(root_dir, spec)
+    >>> branch = DataBranch(root, spec)
 
     Class Attributes:
         SCHEMA_CLASS: Point to a subclass of `ProcessSchema`
@@ -108,7 +108,7 @@ class DataBranch:
     WRITER_KWARGS_MAP: dict = dict()
     _METADATA_NAME: dict = NotImplementedError("Should be implemented by superclass")
     _COPY_KWARGS: dict = {
-        "root_dir": "root_dir",
+        "root": "root",
         "spec": "spec",
         "verbose": "verbose",
         "current_process": "current_process",
@@ -130,7 +130,7 @@ class DataBranch:
         self._meta = None
         self._unversioned = False
         self._current_process = current_process
-        self.root_dir = Path(root_dir)
+        self.root = Path(root_dir)
         self.spec = self._init_spec(spec)
         self.verbose = verbose
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -138,7 +138,7 @@ class DataBranch:
         self.process = self.PROCESS_METHODS(self, self.spec)
         # self.hyper = HyperparameterMethods(self)
         self.schema = self.SCHEMA_CLASS()
-        self._paths_exists = PathCache(self.root_dir, self.spec, exists_req=True)
+        self._paths_exists = PathCache(self.root, self.spec, exists_req=True)
         self._paths = self._paths_exists.get_shared_memory_view(exist_req=False)
         self._process_runs = dict()
         # TODO:

@@ -64,7 +64,7 @@ class ProcessSchema(metaclass=MetaProcessSchema):
                    'process_3_v1': ['process_1', 'process_2'],
                    ...
                 }
-        root_dir: copy of ROOT_DIR
+        root: copy of ROOT_DIR
         subset_proxies:
     """
 
