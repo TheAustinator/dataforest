@@ -133,6 +133,7 @@ class DataBranch:
         self._current_process = current_process
         self._remote_root = remote_root
         self.root = Path(root)
+
         self.spec = self._init_spec(spec)
         self.verbose = verbose
         self.logger = logging.getLogger(self.__class__.__name__)

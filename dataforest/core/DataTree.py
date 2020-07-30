@@ -1,3 +1,10 @@
+from dataforest.core.DataBranch import DataBranch
+
+
 class DataTree:
-    def __init__(self):
+    BRANCH_CLASS = DataBranch
+
+    def __init__(
+        self, root_dir,
+    ):
         raise NotImplementedError()
