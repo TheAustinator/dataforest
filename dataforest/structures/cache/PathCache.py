@@ -23,9 +23,9 @@ class PathCache(HashCash):
         `process_run_path` = `process_path` / `run_id`
     """
 
-    def __init__(self, root_dir: Path, spec: Spec, exists_req: bool):
+    def __init__(self, root: Path, spec: Spec, exists_req: bool):
         super().__init__()
-        self._cache["root"] = root_dir
+        self._cache["root"] = root
         self._spec = spec
         self._exists_req = exists_req
         self._process_catalogue_cache = RunCatalogCache(self.get_process_dir, self._spec)
