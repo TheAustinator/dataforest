@@ -41,7 +41,7 @@ class Spec(list):
         >>>         "alias": "linear_dim_reduce",
         >>>         "params": {
         >>>             "algorithm": "pca",
-        >>>             "n_pcs": 30,
+        >>>             "pca_npcs": 30,
         >>>         }
         >>>     },
         >>>     {
