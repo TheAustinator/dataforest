@@ -19,8 +19,8 @@ class ProcessRun:
 
     def __init__(self, branch: "DataBranch", process_name: str, process: str):
         self.logger = logging.getLogger(f"ProcessRun - {process_name}")
-        if process_name not in branch.spec and process_name != "root":
-            raise ValueError(f'key "{process_name}" not in spec: {branch.spec}')
+        if process_name not in branch.branch_spec and process_name != "root":
+            raise ValueError(f'key "{process_name}" not in branch_spec: {branch.branch_spec}')
         self.process_name = process_name
         self.process = process
         self._branch = branch
@@ -144,7 +144,7 @@ class ProcessRun:
                 print(f.read())
 
     def subprocess_runs(self, process_name: str) -> pd.DataFrame:
-        """DataFrame of spec info for all runs of a given subprocess"""
+        """DataFrame of branch_spec info for all runs of a given subprocess"""
         raise NotImplementedError()
 
     def _build_layers_files(self) -> Dict[str, str]:
@@ -172,7 +172,7 @@ class ProcessRun:
         Args:
             incl_current: whether or not to include files from the current process
         """
-        spec = self.branch.spec
+        spec = self.branch.branch_spec
         precursor_lookup = spec.get_precursors_lookup(incl_current=incl_current, incl_root=True)
         precursors = precursor_lookup[self.process_name]
         process_runs = [self.branch[process_name] for process_name in precursors]

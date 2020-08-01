@@ -18,17 +18,17 @@ def hook_goto_process(dp):
 @hook(attrs=["comparative"])
 def hook_comparative(dp):
     """Sets up DataBranch for comparative analysis"""
-    if "partition" in dp.branch.spec:
+    if "_PARTITION_" in dp.branch.branch_spec:
         logging.warning(
-            "`partition` found at base level of spec. It should normally be specified under an individual processes"
+            "`partition` found at base level of branch_spec. It should normally be specified under an individual processes"
         )
 
     if dp.comparative:
-        partition = dp.branch.spec[dp.name].get("partition", None)
+        partition = dp.branch.branch_spec[dp.name].get("_PARTITION_", None)
         if partition is None:
-            example_dict = {dp.name: {"partition": {"var_1", "var_2"}}}
+            example_dict = {dp.name: {"_PARTITION_": {"var_1", "var_2"}}}
             raise ValueError(
-                f"When `dataprocess` arg `comparative=True`, `branch.spec` must contain the key "
+                f"When `dataprocess` arg `comparative=True`, `branch.branch_spec` must contain the key "
                 f"'partition' nested inside the decorated processes name. I.e.: {example_dict}"
             )
         dp.branch.set_partition(dp.name)
@@ -68,7 +68,7 @@ def hook_garbage_collection(dp):
 @hook
 def hook_store_run_spec(dp):
     """Store `RunSpec` as yaml in process run directory"""
-    run_spec = dp.branch.spec[dp.name]
+    run_spec = dp.branch.branch_spec[dp.name]
     run_path = dp.branch.paths_exists[dp.name]
     run_spec_path = run_path / "run_spec.yaml"  # TODO: hardcoded
     with open(run_spec_path, "w") as f:
@@ -84,7 +84,7 @@ def hook_catalogue(dp):
     If there's an existing entry for the current `RunSpec`, ensures that the
     current `run_id` matches that stored, otherwise, raises an exception
     """
-    run_spec = dp.branch.spec[dp.name]
+    run_spec = dp.branch.branch_spec[dp.name]
     run_spec_str = str(run_spec)
     run_id = dp.branch.paths_exists.get_run_id(dp.name)
     process_dir = dp.branch.paths_exists.get_process_dir(dp.name)

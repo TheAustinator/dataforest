@@ -8,7 +8,7 @@ from pathlib import Path
 from dataforest.structures.cache.PathCache import PathCache
 from dataforest.structures.cache.IOCache import IOCache
 from dataforest.core.ProcessRun import ProcessRun
-from dataforest.core.Spec import Spec
+from dataforest.core.BranchSpec import BranchSpec
 from dataforest.filesystem.tree.Tree import Tree
 
 # from dataforest.hyperparams.HyperparameterMethods import HyperparameterMethods
@@ -36,25 +36,21 @@ class DataBranch:
     for exclusion, and `partition`s specify criteria for partitioning in
     comparative analyses.
     >>> root = "/data/root:dataset_1"
-    >>> spec = {
+    >>> branch_spec = {
     >>>     "process_1":
     >>>         {
     >>>             "epsilon": .1,    # param
     >>>             "batch": {3, 4, 5},    # subset
-    >>>             "filter": {"month": {"march", "april"}}    # filter
+    >>>             "_FILTER_": {"month": {"march", "april"}}    # filter
     >>>         },
     >>>     "process_2": {
     >>>             "alpha": 0.05,    # param
-    >>>             "partition": "treatment",    # partition
+    >>>             "_PARTITION_": "treatment",    # partition
     >>>         }
     >>> }
-    >>> branch = DataBranch(root, spec)
+    >>> branch = DataBranch(root, branch_spec)
 
     Class Attributes:
-        SCHEMA_CLASS: Point to a subclass of `ProcessSchema`
-
-        SPEC_CLASS: Points to a subclass of `Spec`
-
         {READER, WRITER}_METHODS: Pointers to container classes for
             reader and writer methods. The methods names should correspond to
             the input `filename` extension, punctuated by `_` in place of `.`,
@@ -82,10 +78,10 @@ class DataBranch:
 
     Attributes:
         _paths_exists (PathCache): list of all existing paths through hierarchical
-            processes filesystem as dicts in `Spec` format.
+            processes filesystem as dicts in `BranchSpec` format.
         logger:
         schema:
-        spec:
+        branch_spec:
         _io_map:
         _reader_kwargs_map:
         _reader_method_map:
@@ -96,7 +92,6 @@ class DataBranch:
     PLOT_METHODS: Type = PlotMethods
     PROCESS_METHODS: Type = ProcessMethods
     SCHEMA_CLASS: Type = ProcessSchema
-    SPEC_CLASS: Type = Spec
     READER_METHODS: Type = ReaderMethods
     WRITER_METHODS: Type = WriterMethods
     # BATCH_METHODS: Type = BatchMethods
@@ -109,7 +104,7 @@ class DataBranch:
     _METADATA_NAME: dict = NotImplementedError("Should be implemented by superclass")
     _COPY_KWARGS: dict = {
         "root": "root",
-        "spec": "spec",
+        "branch_spec": "branch_spec",
         "verbose": "verbose",
         "current_process": "current_process",
     }
@@ -118,30 +113,25 @@ class DataBranch:
     def __init__(
         self,
         root: Union[str, Path],
-        spec: Optional[List[dict]] = None,
+        branch_spec: Optional[List[dict]] = None,
         verbose: bool = False,
-        config: Optional[Union[dict, str, Path]] = None,
         current_process: Optional[str] = None,
-        remote_root: Optional[str, Path] = None,
+        remote_root: Optional[Union[str, Path]] = None,
     ):
-        if config is not None:
-            update_config(config)
-        else:
-            update_config(self._DEFAULT_CONFIG)
         self._meta = None
         self._unversioned = False
         self._current_process = current_process
         self._remote_root = remote_root
         self.root = Path(root)
 
-        self.spec = self._init_spec(spec)
+        self.branch_spec = self._init_spec(branch_spec)
         self.verbose = verbose
         self.logger = logging.getLogger(self.__class__.__name__)
         self.plot = self.PLOT_METHODS(self)
-        self.process = self.PROCESS_METHODS(self, self.spec)
+        self.process = self.PROCESS_METHODS(self, self.branch_spec)
         # self.hyper = HyperparameterMethods(self)
         self.schema = self.SCHEMA_CLASS()
-        self._paths_exists = PathCache(self.root, self.spec, exists_req=True)
+        self._paths_exists = PathCache(self.root, self.branch_spec, exists_req=True)
         self._paths = self._paths_exists.get_shared_memory_view(exist_req=False)
         self._process_runs = dict()
         # TODO:
@@ -150,7 +140,7 @@ class DataBranch:
     @property
     def current_process(self):
         """
-        The name of the process from `spec`, which attributes like `meta` and
+        The name of the process from `branch_spec`, which attributes like `meta` and
         `rna` correspond to. For example, these data may be e.g. subset or
         directly modified as a result of some process. Use `goto_process` to
         change this property.
@@ -179,7 +169,7 @@ class DataBranch:
             - clears cached data for attributes specified in
                 `DATA_FILE_ALIASES` so that it may be recalculated
                 appropriately
-            process_name: as specified in `spec` under the key `alias` if
+            process_name: as specified in `branch_spec` under the key `alias` if
                 present, or `process` if not
         """
 
@@ -248,7 +238,7 @@ class DataBranch:
         Interface for cell metadata, which is derived from the sample
         metadata and the scrnaseq experimental data. Available UMAP embeddings
         and cluster identifiers will be included, and the data will be subset,
-        filtered, and partitioned based on the specifications in `self.spec`.
+        filtered, and partitioned based on the specifications in `self.branch_spec`.
         Primarily for this reason, this is the preferred interface to metadata
         over direct file access.
         """
@@ -256,17 +246,17 @@ class DataBranch:
             self._meta = self._get_meta(self.current_process)
         return self._meta
 
-    def fork(self, spec: Union[list, Spec]) -> "DataBranch":
+    def fork(self, branch_spec: Union[list, BranchSpec]) -> "DataBranch":
         """
-        "Forks" the current branch to create a copy with an altered spec, but
+        "Forks" the current branch to create a copy with an altered branch_spec, but
         the same arguments otherwise.
         Args:
-            spec: new spec with which the "forked" branch is to be created
+            branch_spec: new branch_spec with which the "forked" branch is to be created
 
         Returns:
             branch: new branch
         """
-        branch = self.copy(spec=spec)
+        branch = self.copy(branch_spec=branch_spec)
         return branch
 
     def pull(self, local_root: Union[str, Path]) -> "DataBranch":
@@ -341,7 +331,7 @@ class DataBranch:
     def paths(self) -> Dict[str, Path]:
         """
         The paths to the data directories for each `process_run` in the processes
-        chain specified by `self.spec`, including only those which exist.
+        chain specified by `self.branch_spec`, including only those which exist.
         """
         return self._paths
 
@@ -361,7 +351,7 @@ class DataBranch:
 
     def __getitem__(self, process_name: str) -> ProcessRun:
         if process_name not in self._process_runs:
-            process = self.spec[process_name].process if process_name != "root" else "root"
+            process = self.branch_spec[process_name].process if process_name != "root" else "root"
             if process_name in ("root", None):
                 process_name = "root"
                 process = "root"
@@ -383,7 +373,7 @@ class DataBranch:
     def _apply_data_ops(self, process_name: str, df: Optional[pd.DataFrame] = None):
         """
         Apply subset and filter operations to a dataframe where the operations
-        are derived from the `spec`, consecutively applying data operations,
+        are derived from the `branch_spec`, consecutively applying data operations,
         beginning with those corresponding to the first process, and ending
         with those corresponding to the process specified by `process_name`
         Args:
@@ -392,8 +382,8 @@ class DataBranch:
         Returns:
 
         """
-        subset_list = self.spec.get_subset_list(process_name)
-        filter_list = self.spec.get_filter_list(process_name)
+        subset_list = self.branch_spec.get_subset_list(process_name)
+        filter_list = self.branch_spec.get_filter_list(process_name)
         if df is None:
             self.set_meta(None)
             df = self.meta.copy()
@@ -450,7 +440,7 @@ class DataBranch:
         update_recursive(writer_method_map.update, self.WRITER_MAP, inplace=True)
         reader_map, writer_map = dict(), dict()
         for process_name, file_dict in file_map.dict.items():
-            if process_name in self.spec.process_order:
+            if process_name in self.branch_spec.process_order:
                 reader_method_dict = reader_method_map[process_name]
                 writer_method_dict = writer_method_map[process_name]
                 reader_kwargs_dict = reader_kwargs_map[process_name]
@@ -506,12 +496,13 @@ class DataBranch:
     def _get_copy_base_kwargs(self):
         return {k: getattr(self, v) for k, v in self._COPY_KWARGS.items()}
 
-    def _init_spec(self, spec: Optional[Union[dict, Spec]]) -> Spec:
-        if spec is None:
-            spec = dict()
-        if not isinstance(spec, Spec):
-            spec = self.SPEC_CLASS(spec)
-        return spec
+    @staticmethod
+    def _init_spec(branch_spec: Optional[Union[list, BranchSpec]]) -> BranchSpec:
+        if branch_spec is None:
+            branch_spec = list()
+        if not isinstance(branch_spec, BranchSpec):
+            branch_spec = BranchSpec(branch_spec)
+        return branch_spec
 
     def _check_root_meta_match(self, root_other: Path):
         root_into_empty = (root_other / "meta.tsv").exists()

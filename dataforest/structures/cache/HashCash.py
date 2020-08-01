@@ -15,6 +15,9 @@ class HashCash(dict):
     def keys(self):
         return self._cache.keys()
 
+    def values(self):
+        return self._cache.values()
+
     def __getitem__(self, k):
         if k not in self._cache or self._cache[k] is None:
             self._cache[k] = self._get(k)

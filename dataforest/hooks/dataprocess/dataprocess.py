@@ -11,8 +11,8 @@ class dataprocess(metaclass=MetaDataProcess):
     Decorator which allows allows for a processes to work within the data_forest infrastructure.
     Each `data_process` is tied to two levels of subdirectory -- an outer directory which is named to match the processes
     and an inner directory which is named to capture relevant details of the processes run state
-    ✓ uses `ForestQuery` to generate directory names corresponding to `DataBranch.spec`
-    ✓ checks for `partition` in spec and sets it in data for `comparative` analyses
+    ✓ uses `ForestQuery` to generate directory names corresponding to `DataBranch.branch_spec`
+    ✓ checks for `partition` in branch_spec and sets it in data for `comparative` analyses
     ✓ moves DataBranch data selection to `process_name` using `at`
     ✓ checks to ensure that specified input data is present
     - may make new tables and update them in the future

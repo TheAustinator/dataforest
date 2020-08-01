@@ -59,11 +59,11 @@ class BadOperation(KeyError):
 
 
 class BadSubset(BadOperation):
-    OPERATION = "subset"
+    OPERATION = "_SUBSET_"
 
 
 class BadFilter(BadOperation):
-    OPERATION = "filter"
+    OPERATION = "_FILTER_"
 
 
 class HookException(Exception):
