@@ -16,8 +16,6 @@ class RunGroupSpec(RunSpec):
     # TODO: make SpecDictBase for shared components of this and RunSpec
 
     def __init__(self, dict_: Union[dict, "RunGroupSpec"]):
-        if isinstance(dict_, RunGroupSpec):
-            raise NotImplementedError("RunGroupSpec not tested for idempotency")
         super().__init__(**dict_)
         self.run_specs = self._build_run_specs()
 

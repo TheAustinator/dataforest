@@ -105,15 +105,15 @@ class BranchSpec(list):
 
     def get_subset_list(self, process_name: str) -> List[dict]:
         """See `_get_data_operation_list`"""
-        return self._get_data_operation_list(process_name, "_SUBSET_")
+        return self._get_data_operation_list(process_name, "subset")
 
     def get_filter_list(self, process_name: str) -> List[dict]:
         """See `_get_data_operation_list`"""
-        return self._get_data_operation_list(process_name, "_FILTER_")
+        return self._get_data_operation_list(process_name, "filter")
 
     def get_partition_list(self, process_name: str) -> List[set]:
         """See `_get_data_operation_list`"""
-        return self._get_data_operation_list(process_name, "_PARTITION_")
+        return self._get_data_operation_list(process_name, "partition")
 
     def _get_data_operation_list(self, process_name: str, operation_name: str) -> List[Union[dict, set]]:
         """
@@ -207,7 +207,10 @@ class BranchSpec(list):
     def __getitem__(self, item: Union[str, int]) -> "RunSpec":
         """Get `RunSpec` either via `int` index or `name`"""
         if not isinstance(item, int):
-            return self._run_spec_lookup[item]
+            try:
+                return self._run_spec_lookup[item]
+            except Exception as e:
+                raise e
         else:
             return super().__getitem__(item)
 

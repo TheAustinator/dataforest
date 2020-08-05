@@ -5,6 +5,7 @@ from typing import Callable, Dict, Optional, Type, Union, List, Iterable, Tuple,
 import pandas as pd
 from pathlib import Path
 
+from dataforest.core.DataBase import DataBase
 from dataforest.structures.cache.PathCache import PathCache
 from dataforest.structures.cache.IOCache import IOCache
 from dataforest.core.ProcessRun import ProcessRun
@@ -19,11 +20,10 @@ from dataforest.core.schema.ProcessSchema import ProcessSchema
 from dataforest.filesystem.io import ReaderMethods
 from dataforest.filesystem.io.WriterMethods import WriterMethods
 from dataforest.utils.exceptions import BadSubset, BadFilter
-from dataforest.utils.loaders.update_config import update_config
 from dataforest.utils.utils import update_recursive
 
 
-class DataBranch:
+class DataBranch(DataBase):
     """
     # TODO: update
     NOTE: OUTDATED DOCSTRING
@@ -124,18 +124,18 @@ class DataBranch:
         self._remote_root = remote_root
         self.root = Path(root)
 
-        self.branch_spec = self._init_spec(branch_spec)
+        self.spec = self._init_spec(branch_spec)
         self.verbose = verbose
         self.logger = logging.getLogger(self.__class__.__name__)
         self.plot = self.PLOT_METHODS(self)
-        self.process = self.PROCESS_METHODS(self, self.branch_spec)
+        self.process = self.PROCESS_METHODS(self, self.spec)
         # self.hyper = HyperparameterMethods(self)
         self.schema = self.SCHEMA_CLASS()
-        self._paths_exists = PathCache(self.root, self.branch_spec, exists_req=True)
+        self._paths_exists = PathCache(self.root, self.spec, exists_req=True)
         self._paths = self._paths_exists.get_shared_memory_view(exist_req=False)
         self._process_runs = dict()
-        # TODO:
-        self.f, self.w = self._map_file_io()
+        self._f = None
+        self._w = None
 
     @property
     def current_process(self):
@@ -159,12 +159,30 @@ class DataBranch:
     def remote_root(self, val):
         self._remote_root = val
 
+    @property
+    def f(self) -> Dict[str, IOCache]:
+        """read lookup for files"""
+        if self._f is None:
+            self._f, self._w = self._map_file_io()
+        return self._f
+
+    @property
+    def w(self) -> Dict[str, IOCache]:
+        """write lookup for files"""
+        if self._w is None:
+            self._f, self._w = self._map_file_io()
+        return self._w
+
+    @property
+    def unversioned(self):
+        return self._unversioned
+
     def goto_process(self, process_name: str) -> "DataBranch":
         """
         Updates the state of the `DataBranch` object to reflect the
         `ProcessRun` of `process_name` by:
-            - clearing metadata cache so that it can be recalculated to include
-                only the metadata up to and including that for `process_name`
+            - clearing sample_metadata cache so that it can be recalculated to include
+                only the sample_metadata up to and including that for `process_name`
             - updates the data operations (`subset`, `filter`, `partition`)
             - clears cached data for attributes specified in
                 `DATA_FILE_ALIASES` so that it may be recalculated
@@ -187,59 +205,14 @@ class DataBranch:
                     setattr(self, data_attr, None)
         return self
 
-    @classmethod
-    def load(cls, root, **kwargs):
-        return cls(root, **kwargs)
-
-    @classmethod
-    def from_input_dirs(
-        cls,
-        root: Union[str, Path],
-        input_paths: Optional[Union[str, Path, Iterable[Union[str, Path]]]] = None,
-        mode: Optional[str] = None,
-        **kwargs,
-    ) -> "DataBranch":
-        """
-        Combines multiple datasets into a root directory, which will be the
-        basis for downstream analysis. Then a DataBranch is instantiated.
-        The input directories are specified either via
-        Args:
-            input_paths: list of input data directories
-            root: root directory to deposit combined files
-        """
-        if not isinstance(input_paths, (list, tuple)):
-            input_paths = [input_paths]
-        additional_kwargs = cls._combine_datasets(root, input_paths=input_paths, mode=mode)
-        kwargs = {**additional_kwargs, **kwargs}
-        return cls(root, **kwargs)
-
-    @classmethod
-    def from_sample_metadata(
-        cls, root: Union[str, Path], metadata: Optional[pd.DataFrame] = None, **kwargs,
-    ) -> "DataBranch":
-        """
-        Combines multiple datasets into a root directory, which will be the
-        basis for downstream analysis. Then a DataBranch is instantiated.
-        The input directories are specified either via
-        Args:
-            root: root directory to deposit combined files
-            metadata: path to metadata, where each row corresponds to a
-                single dataset from `input_dirs`. The only column which must
-                be present is `path`, which must be matched to the elements of
-                `input_dirs`
-        """
-        additional_kwargs = cls._combine_datasets(root, metadata=metadata)
-        kwargs = {**additional_kwargs, **kwargs}
-        return cls(root, **kwargs)
-
     @property
     def meta(self) -> pd.DataFrame:
         """
-        Interface for cell metadata, which is derived from the sample
-        metadata and the scrnaseq experimental data. Available UMAP embeddings
+        Interface for cell sample_metadata, which is derived from the sample
+        sample_metadata and the scrnaseq experimental data. Available UMAP embeddings
         and cluster identifiers will be included, and the data will be subset,
-        filtered, and partitioned based on the specifications in `self.branch_spec`.
-        Primarily for this reason, this is the preferred interface to metadata
+        filtered, and partitioned based on the specifications in `self.spec`.
+        Primarily for this reason, this is the preferred interface to sample_metadata
         over direct file access.
         """
         if self._meta is None:
@@ -301,7 +274,7 @@ class DataBranch:
         root_into = Path(root_into)
         self._check_root_meta_match(root_into)
 
-        # TODO: if root metadata, check that it's the same
+        # TODO: if root sample_metadata, check that it's the same
         # TODO: goto each process in chain and get file map
         # TODO: update `done` to use something besides logs
         # TODO: copy file map, evaluate all elements for `done` processes
@@ -320,10 +293,6 @@ class DataBranch:
         kwargs = {k: deepcopy(v) for k, v in kwargs.items()}
         return self.__class__(**kwargs)
 
-    @property
-    def meta(self) -> pd.DataFrame:
-        raise NotImplementedError("Should be implemented by subclass")
-
     def set_meta(self, df: Optional[pd.DataFrame]):
         self._meta = df
 
@@ -331,7 +300,7 @@ class DataBranch:
     def paths(self) -> Dict[str, Path]:
         """
         The paths to the data directories for each `process_run` in the processes
-        chain specified by `self.branch_spec`, including only those which exist.
+        chain specified by `self.spec`, including only those which exist.
         """
         return self._paths
 
@@ -351,7 +320,7 @@ class DataBranch:
 
     def __getitem__(self, process_name: str) -> ProcessRun:
         if process_name not in self._process_runs:
-            process = self.branch_spec[process_name].process if process_name != "root" else "root"
+            process = self.spec[process_name].process if process_name != "root" else "root"
             if process_name in ("root", None):
                 process_name = "root"
                 process = "root"
@@ -360,15 +329,6 @@ class DataBranch:
 
     def _get_meta(self, process_name):
         raise NotImplementedError("This method should be implemented by `DataBranch` subclasses")
-
-    @staticmethod
-    def _combine_datasets(
-        root: Union[str, Path],
-        metadata: Optional[Union[str, Path]] = None,
-        input_paths: Optional[List[Union[str, Path]]] = None,
-        mode: Optional[str] = None,
-    ):
-        raise NotImplementedError("Must be implemented by subclass")
 
     def _apply_data_ops(self, process_name: str, df: Optional[pd.DataFrame] = None):
         """
@@ -382,8 +342,8 @@ class DataBranch:
         Returns:
 
         """
-        subset_list = self.branch_spec.get_subset_list(process_name)
-        filter_list = self.branch_spec.get_filter_list(process_name)
+        subset_list = self.spec.get_subset_list(process_name)
+        filter_list = self.spec.get_filter_list(process_name)
         if df is None:
             self.set_meta(None)
             df = self.meta.copy()
@@ -440,7 +400,7 @@ class DataBranch:
         update_recursive(writer_method_map.update, self.WRITER_MAP, inplace=True)
         reader_map, writer_map = dict(), dict()
         for process_name, file_dict in file_map.dict.items():
-            if process_name in self.branch_spec.process_order:
+            if process_name in self.spec.process_order:
                 reader_method_dict = reader_method_map[process_name]
                 writer_method_dict = writer_method_map[process_name]
                 reader_kwargs_dict = reader_kwargs_map[process_name]
@@ -510,6 +470,9 @@ class DataBranch:
             pd_kwargs = {"sep": "\t", "index_col": 0}
             meta = pd.read_csv(self["root"].path_map["meta"], **pd_kwargs)
             # TODO: hardcoded filename
-            meta_other = pd.read_csv(root_other / "meta.tsv", **pd_kwargs)
+            try:
+                meta_other = pd.read_csv(root_other / "meta.tsv", **pd_kwargs)
+            except Exception as e:
+                raise e
             if not meta.equals(meta_other):
-                raise ValueError("Cannot merge branches with two different metadata files at root")
+                raise ValueError("Cannot merge branches with two different sample_metadata files at root")

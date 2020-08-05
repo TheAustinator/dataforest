@@ -15,12 +15,15 @@ class Sweep(list):
             if "base" in sweep_obj:
                 base = sweep_obj["base"]
                 num = sweep_obj.get("num", max_ - min_ + 1)
-                values = list(np.logspace(min_, max_, num, base=base))
+                values = np.logspace(min_, max_, num, base=base)
             elif "step" in sweep_obj:
                 step = sweep_obj["step"]
-                values = list(range(min_, max_ + step, step))
+                values = np.arange(min_, max_ + step, step)
             else:
                 raise ValueError(f'If _SWEEP_ is a dict, it must contain either "base" for log or "step" for linear')
+            all_ints = all(map(lambda x: float(x).is_integer(), values))
+            dtype = int if all_ints else float
+            values = list(map(dtype, values))
         elif isinstance(sweep_obj, (list, set, tuple)):
             values = list(sweep_obj)
         else:

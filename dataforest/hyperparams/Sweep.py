@@ -107,9 +107,9 @@ class Sweep:
                 branch_row = list()
                 param_row = list()
                 for value in param_values:
-                    spec = self.base_branch.branch_spec.copy()
-                    spec[process_name][param_name] = value
-                    branch = self.base_branch.copy(spec=spec)
+                    branch_spec = self.base_branch.spec.copy()
+                    branch_spec[process_name][param_name] = value
+                    branch = self.base_branch.copy(branch_spec=branch_spec)
                     branch_row.append(branch)
                     param_row.append({param_name: value})
                 branch_matrix.append(branch_row)
@@ -132,10 +132,10 @@ class Sweep:
                 branch_row = list()
                 param_row = list()
                 for value_2 in value_list_2:
-                    spec = self.base_branch.branch_spec.copy()
-                    spec[process_name][name_1] = value_1
-                    spec[process_name][name_2] = value_2
-                    branch = self.base_branch.copy(spec=spec)
+                    branch_spec = self.base_branch.spec.copy()
+                    branch_spec[process_name][name_1] = value_1
+                    branch_spec[process_name][name_2] = value_2
+                    branch = self.base_branch.copy(branch_spec=branch_spec)
                     branch_row.append(branch)
                     param_row.append({name_1: value_1, name_2: value_2})
                 branch_matrix.append(branch_row)

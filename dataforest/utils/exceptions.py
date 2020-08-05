@@ -26,7 +26,7 @@ class InputDataNotFound(FileNotFoundError):
     def __str__(self):
         return (
             f"Process `{self._process_name}` requires input data from `{self._requires}`. Not found at expected"
-            f"location: {self._branch.paths_exists[self._requires]} based on `branch.spec`: {self._branch._spec}"
+            f"location: {self._branch.paths_exists[self._requires]} based on `branch.spec`: {self._branch.spec}"
         )
 
 

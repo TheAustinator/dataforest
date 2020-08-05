@@ -57,9 +57,6 @@ def test_run_group_spec(tree_spec):
 
 
 def test_tree_spec(data_dir, tree_spec):
-    data_tree = TreeSpec(tree_spec)
-    return data_tree
-
-
-def test_data_tree():
-    pass
+    tree_spec = TreeSpec(tree_spec)
+    assert len(tree_spec.branch_specs) == 3200  # 100 normalization x 32 reduce
+    return tree_spec

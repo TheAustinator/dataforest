@@ -52,3 +52,9 @@ class TreeSpec(BranchSpec):
 
     def _build_branch_specs(self):
         return list(product(*[run_group_spec.run_specs for run_group_spec in self]))
+
+    def __setitem__(self, key, value):
+        if not isinstance(key, int):
+            idx_lookup = {run_group_spec.name: i for i, run_group_spec in enumerate(self)}
+            key = idx_lookup[key]
+        list.__setitem__(self, key, value)

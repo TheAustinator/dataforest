@@ -16,7 +16,10 @@ class RunSpec(dict):
 
     @property
     def name(self) -> str:
-        return self.get("_ALIAS_", self["_PROCESS_"])
+        try:
+            return self.get("_ALIAS_", self["_PROCESS_"])
+        except Exception as e:
+            raise e
 
     @property
     def process(self) -> str:
