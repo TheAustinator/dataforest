@@ -1,8 +1,8 @@
-from typing import Callable, Dict, Optional, Set, Tuple, Union, Iterable
+from typing import Callable, Dict, Optional, Tuple, Union
 
 from pathlib import Path
 
-from dataforest.core.schema.MetaProcessSchema import MetaProcessSchema
+from dataforest.config.MetaProcessSchema import MetaProcessSchema
 
 
 class ProcessSchema(metaclass=MetaProcessSchema):

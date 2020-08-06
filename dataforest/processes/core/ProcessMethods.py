@@ -1,11 +1,9 @@
-from typing import Dict
-
 from dataforest.core.BranchSpec import BranchSpec
-from dataforest.processes.core.MetaProcessMethods import MetaDataProcess
+from dataforest.config.MetaProcessMethods import MetaProcessMethods
 from dataforest.utils import copy_func, tether
 
 
-class ProcessMethods(metaclass=MetaDataProcess):
+class ProcessMethods(metaclass=MetaProcessMethods):
     # TODO: docstring
     """
     Container base class for `staticmethod`s which execute `processes` in a

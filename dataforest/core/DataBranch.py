@@ -1,6 +1,6 @@
 import logging
 from copy import deepcopy
-from typing import Callable, Dict, Optional, Type, Union, List, Iterable, Tuple, Any
+from typing import Callable, Dict, Optional, Type, Union, List, Tuple, Any, Iterable
 
 import pandas as pd
 from pathlib import Path
@@ -12,9 +12,7 @@ from dataforest.core.ProcessRun import ProcessRun
 from dataforest.core.BranchSpec import BranchSpec
 from dataforest.filesystem.tree.Tree import Tree
 
-# from dataforest.hyperparams.HyperparameterMethods import HyperparameterMethods
-# from dataforest.processes.core.BatchMethods import BatchMethods
-from dataforest.plot.PlotMethods import PlotMethods
+from dataforest.core.PlotMethods import PlotMethods
 from dataforest.processes.core.ProcessMethods import ProcessMethods
 from dataforest.core.schema.ProcessSchema import ProcessSchema
 from dataforest.filesystem.io import ReaderMethods
@@ -94,9 +92,7 @@ class DataBranch(DataBase):
     SCHEMA_CLASS: Type = ProcessSchema
     READER_METHODS: Type = ReaderMethods
     WRITER_METHODS: Type = WriterMethods
-    # BATCH_METHODS: Type = BatchMethods
     DATA_FILE_ALIASES: set = set()
-    # HYPERPARAMETER_METHODS: Type = HyperparameterMethods
     READER_MAP: dict = dict()
     WRITER_MAP: dict = dict()
     READER_KWARGS_MAP: dict = dict()
@@ -118,6 +114,7 @@ class DataBranch(DataBase):
         current_process: Optional[str] = None,
         remote_root: Optional[Union[str, Path]] = None,
     ):
+        super().__init__()
         self._meta = None
         self._unversioned = False
         self._current_process = current_process
@@ -127,7 +124,7 @@ class DataBranch(DataBase):
         self.spec = self._init_spec(branch_spec)
         self.verbose = verbose
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.plot = self.PLOT_METHODS(self)
+        # self.plot = self.PLOT_METHODS(self)
         self.process = self.PROCESS_METHODS(self, self.spec)
         # self.hyper = HyperparameterMethods(self)
         self.schema = self.SCHEMA_CLASS()
@@ -145,6 +142,8 @@ class DataBranch(DataBase):
         directly modified as a result of some process. Use `goto_process` to
         change this property.
         """
+        if not self._current_process:
+            return "root"
         return self._current_process
 
     @property
@@ -177,6 +176,20 @@ class DataBranch(DataBase):
     def unversioned(self):
         return self._unversioned
 
+    @property
+    def meta(self) -> pd.DataFrame:
+        """
+        Interface for cell sample_metadata, which is derived from the sample
+        sample_metadata and the scrnaseq experimental data. Available UMAP embeddings
+        and cluster identifiers will be included, and the data will be subset,
+        filtered, and partitioned based on the specifications in `self.spec`.
+        Primarily for this reason, this is the preferred interface to sample_metadata
+        over direct file access.
+        """
+        if self._meta is None:
+            self._meta = self._get_meta(self.current_process)
+        return self._meta
+
     def goto_process(self, process_name: str) -> "DataBranch":
         """
         Updates the state of the `DataBranch` object to reflect the
@@ -199,25 +212,8 @@ class DataBranch(DataBase):
             self._meta = None
             new_path_map = self[self.current_process].path_map
             path_map_changes = {alias for alias, path in new_path_map.items() if prev_path_map.get(alias, None) != path}
-            for file_alias in path_map_changes:
-                if file_alias in self.DATA_FILE_ALIASES:
-                    data_attr = f"_{file_alias}"
-                    setattr(self, data_attr, None)
+            self.clear_data(path_map_changes)
         return self
-
-    @property
-    def meta(self) -> pd.DataFrame:
-        """
-        Interface for cell sample_metadata, which is derived from the sample
-        sample_metadata and the scrnaseq experimental data. Available UMAP embeddings
-        and cluster identifiers will be included, and the data will be subset,
-        filtered, and partitioned based on the specifications in `self.spec`.
-        Primarily for this reason, this is the preferred interface to sample_metadata
-        over direct file access.
-        """
-        if self._meta is None:
-            self._meta = self._get_meta(self.current_process)
-        return self._meta
 
     def fork(self, branch_spec: Union[list, BranchSpec]) -> "DataBranch":
         """
@@ -261,6 +257,30 @@ class DataBranch(DataBase):
                 f"`remote_root` must be passed to `DataBranch.push`"
             )
         self._merge(remote_root)
+
+    def clear_data(self, attrs: Optional[Iterable[str]] = None, all_data: bool = False):
+        if not (attrs != None or all_data):
+            raise ValueError("Must provide `attrs` or `all_data`")
+        attrs = self.DATA_FILE_ALIASES if all_data else attrs
+        for attr_name in attrs:
+            data_attr = f"_{attr_name}"
+            setattr(self, data_attr, None)
+
+    def create_root_plots(self, plot_kwargs: Optional[Dict[str, dict]] = None):
+        if self.is_process_plots_exist("root"):
+            self.logger.info(
+                f"plots already present for `root` at {self['root'].plots_path}. To regenerate plots, delete directory"
+            )
+            return
+        plot_kwargs = plot_kwargs if plot_kwargs else dict()
+        root_plot_methods = self.plot.plot_methods.get("root", [])
+        for name in root_plot_methods:
+            kwargs = plot_kwargs.get(name, dict())
+            method = getattr(self.plot, name)
+            method(**kwargs)
+
+    def is_process_plots_exist(self, process_name: str) -> bool:
+        return self[process_name].plots_path.exists()
 
     def _merge(self, root_into: Union[str, Path]):
         """
@@ -320,10 +340,9 @@ class DataBranch(DataBase):
 
     def __getitem__(self, process_name: str) -> ProcessRun:
         if process_name not in self._process_runs:
-            process = self.spec[process_name].process if process_name != "root" else "root"
             if process_name in ("root", None):
                 process_name = "root"
-                process = "root"
+            process = self.spec[process_name].process if process_name != "root" else "root"
             self._process_runs[process_name] = ProcessRun(self, process_name, process)
         return self._process_runs[process_name]
 

@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
+from dataforest.hooks.dataprocess import dataprocess
 from dataforest.utils.catalogue import run_id_from_multi_row
 from dataforest.utils.exceptions import InputDataNotFound
 from dataforest.hooks.hook import hook
@@ -51,6 +52,9 @@ def hook_mkdirs(dp):
     process_path.mkdir(parents=True, exist_ok=True)
     run_path = dp.branch.paths[dp.name]
     run_path.mkdir(parents=True, exist_ok=True)
+    if hasattr(dp, "plots") and dp.plots:
+        plots_dir = run_path / "_plots"
+        plots_dir.mkdir(exist_ok=True)
 
 
 @hook
@@ -115,3 +119,10 @@ def hook_catalogue(dp):
             run_id_stored = run_id_from_multi_row(run_id_rows)
             if run_id != run_id_stored:
                 raise ValueError(f"run_id: {run_id} is not equal to stored: {run_id_stored} for {str(run_spec)}")
+
+
+@hook
+def hook_generate_plots(dp: dataprocess):
+    plot_methods = dp.branch.plot.plot_method_lookup
+    for method in plot_methods.values():
+        method(dp.branch)

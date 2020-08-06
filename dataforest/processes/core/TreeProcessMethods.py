@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, List, Union
 
 from dataforest.core.TreeSpec import TreeSpec
 from dataforest.structures.cache.BranchCache import BranchCache
@@ -36,7 +36,28 @@ class TreeProcessMethods:
                 branches
         """
 
-        def distributed_method(*args, stop_on_error: bool = False, stop_on_hook_error: bool = False, **kwargs):
+        def distributed_method(
+            *args,
+            stop_on_error: bool = False,
+            stop_on_hook_error: bool = False,
+            clear_data: Union[bool, List[str]] = True,
+            **kwargs,
+        ):
+            """
+
+            Args:
+                *args:
+                stop_on_error:
+                stop_on_hook_error:
+                clear_data: clear cached data attributes of each branch
+                    after process execution to save memory. If boolean, whether
+                    or not to clear all data attrs, if list, names of data
+                    attrs to clear
+                **kwargs:
+
+            Returns:
+
+            """
             if not self._branch_cache.fully_loaded:
                 self._branch_cache.load_all()
             return_vals = []
@@ -48,6 +69,9 @@ class TreeProcessMethods:
                             *args, stop_on_error=stop_on_error, stop_on_hook_error=stop_on_hook_error, **kwargs
                         )
                     )
+                    if clear_data:
+                        clear_kwargs = {"all_data": True} if isinstance(clear_data, bool) else {"attrs": clear_data}
+                        branch.clear_data(**clear_kwargs)
             return return_vals
 
         distributed_method.__name__ = method_name

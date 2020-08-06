@@ -1,8 +1,8 @@
 from functools import wraps
-import traceback
 from typing import Callable, Iterable, Optional, Union, List, Tuple
 
-from dataforest.hooks.dataprocess.MetaDataProcess import MetaDataProcess
+from dataforest.config.MetaDataProcess import MetaDataProcess
+from dataforest.utils.ExceptionHandler import ExceptionHandler
 from dataforest.utils.exceptions import HookException
 
 
@@ -61,7 +61,7 @@ class dataprocess(metaclass=MetaDataProcess):
             try:
                 return func(self.branch, run_name, *args, **kwargs)
             except Exception as e:
-                self._handle_error(e, "process.err", stop_on_error)
+                ExceptionHandler.handle(branch, e, "process.err", stop_on_error)
             finally:
                 self._run_hooks(self.clean_hooks, try_all=True, stop_on_hook_error=stop_on_hook_error)
 
@@ -82,23 +82,8 @@ class dataprocess(metaclass=MetaDataProcess):
             except Exception as e:
                 hook_exceptions[str(hook.__name__)] = e
                 if not try_all:
-                    self._handle_error(HookException(self.name, hook_exceptions), "hooks.err", stop_on_hook_error)
+                    e = HookException(self.name, hook_exceptions)
+                    ExceptionHandler.handle(self.branch, e, "hooks.err", stop_on_hook_error)
         if hook_exceptions:
-            self._handle_error(HookException(self.name, hook_exceptions), "hooks.err", stop_on_hook_error)
-
-    def _handle_error(self, e, logfile_name, stop):
-        try:
-            self._log_error(e, logfile_name)
-        finally:
-            if stop:
-                raise e
-
-    def _log_error(self, e, logfile_name):
-        branch = self.branch
-        log_dir = branch[branch.current_process].logs_path
-        log_dir.mkdir(exist_ok=True)
-        log_path = log_dir / logfile_name
-        with open(log_path, "w") as f:
-            f.write("Traceback (most recent call last):")
-            traceback.print_tb(e.__traceback__, file=f)
-            f.write(f"\n{str(e)}")
+            e = HookException(self.name, hook_exceptions)
+            ExceptionHandler.handle(self.branch, e, "hooks.err", stop_on_hook_error)

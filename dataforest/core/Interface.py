@@ -59,6 +59,8 @@ class Interface:
         verbose: bool = False,
         current_process: Optional[str] = None,
         remote_root: Optional[Union[str, Path]] = None,
+        root_plots: bool = True,
+        plot_kwargs: Optional[dict] = None,
         **kwargs,
     ) -> Union["DataBranch", "CellBranch", "DataTree", "CellTree"]:
         """
@@ -75,7 +77,11 @@ class Interface:
             verbose:
             current_process:
             remote_root:
+            root_plots:
+            plot_kwargs:
         """
+        if not isinstance(input_paths, (list, tuple)):
+            input_paths = [input_paths]
         kwargs = {
             "branch_spec": branch_spec,
             "tree_spec": tree_spec,
@@ -85,12 +91,13 @@ class Interface:
             **kwargs,
         }
         kwargs = cls._prune_kwargs(kwargs)
-        if not isinstance(input_paths, (list, tuple)):
-            input_paths = [input_paths]
         interface_cls = cls._get_interface_class(kwargs)
         additional_kwargs = interface_cls._combine_datasets(root, input_paths=input_paths, mode=mode)
         kwargs = {**additional_kwargs, **kwargs}
-        return interface_cls(root, **kwargs)
+        inst = interface_cls(root, **kwargs)
+        if root_plots:
+            inst.create_root_plots(plot_kwargs)
+        return inst
 
     @classmethod
     def from_sample_metadata(
@@ -102,6 +109,8 @@ class Interface:
         verbose: bool = False,
         current_process: Optional[str] = None,
         remote_root: Optional[Union[str, Path]] = None,
+        root_plots: bool = True,
+        plot_kwargs: Optional[dict] = None,
         **kwargs,
     ) -> Union["DataBranch", "CellBranch", "DataTree", "CellTree"]:
         """
@@ -120,6 +129,20 @@ class Interface:
             verbose:
             current_process:
             remote_root:
+            root_plots:
+            plot_kwargs: per-method plotting kwargs for methods in
+                `PlotMethods` and subclasses.
+                Ex: plot_kwargs = {
+                        "plot_method_1": {
+                            "y_lim": (0, 1),
+                            "alpha": 0.5,
+                        },
+                        "plot_method_2": {
+                            "y_var": "seq_depth",
+                            "x_var": "donor_age",
+                            "facet_by": "tissue_type",
+                        },
+                    }
         """
         kwargs = {
             "branch_spec": branch_spec,
@@ -133,7 +156,10 @@ class Interface:
         interface_cls = cls._get_interface_class(kwargs)
         additional_kwargs = interface_cls._combine_datasets(root, metadata=sample_metadata)
         kwargs = {**additional_kwargs, **kwargs}
-        return interface_cls(root, **kwargs)
+        inst = interface_cls(root, **kwargs)
+        if root_plots:
+            inst.create_root_plots(plot_kwargs)
+        return inst
 
     @staticmethod
     def _prune_kwargs(kwargs):

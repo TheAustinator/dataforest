@@ -102,8 +102,8 @@ class ProcessRun:
     @property
     def plot_map(self) -> Dict[str, Path]:
         if self._plot_map is None:
-            self._plot_map = self._build_path_map(incl_current=True)
-        return self._path_map
+            self._plot_map = self._build_path_map(incl_current=True, plot_map=True)
+        return self._plot_map
 
     @property
     def path_map_prior(self) -> Dict[str, Path]:

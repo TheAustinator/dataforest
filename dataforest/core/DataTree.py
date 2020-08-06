@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Dict
 
 from dataforest.core.DataBase import DataBase
 from dataforest.core.DataBranch import DataBranch
@@ -22,6 +22,7 @@ class DataTree(DataBase):
         # TODO: add something that tells them how many of each process will be run
         # TODO: add a hook that leaves in "IN_PROGRESS" placeholder file in a run until
         #   it finishes. That way, we can
+        super().__init__()
         self.root = root
         self.tree_spec = self._init_spec(tree_spec)
         self._verbose = verbose
@@ -48,6 +49,11 @@ class DataTree(DataBase):
 
     def run_all(self, workers: int = 1, batch_queue: Optional[str] = None):
         return [method() for method in self.process.process_methods]
+
+    def create_root_plots(self, plot_kwargs: Optional[Dict[str, dict]] = None):
+        rand_spec = self.tree_spec.branch_specs[0]
+        rand_branch = self._branch_cache[str(rand_spec)]
+        rand_branch.create_root_plots(plot_kwargs)
 
     @staticmethod
     def _init_spec(tree_spec: Union[list, TreeSpec]) -> TreeSpec:
