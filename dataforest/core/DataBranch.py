@@ -276,6 +276,13 @@ class DataBranch:
             self._process_runs[process_name] = ProcessRun(self, process_name, process)
         return self._process_runs[process_name]
 
+    @property
+    def current_path(self) -> str:
+        """
+        The paths at current `process_run`
+        """
+        return self._paths[self._current_process]
+
     @staticmethod
     def _combine_datasets(
         root_dir: Union[str, Path],
