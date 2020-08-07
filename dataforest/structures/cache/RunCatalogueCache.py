@@ -5,7 +5,7 @@ from typing import Callable
 import pandas as pd
 import yaml
 
-from dataforest.core.Spec import Spec
+from dataforest.core.BranchSpec import BranchSpec
 from dataforest.structures.cache.HashCash import HashCash
 
 
@@ -24,7 +24,7 @@ class RunCatalogCache(HashCash):
     #  (e.g "subset_donor"), or just leave data ops as blobs
     RUN_SPEC_FILENAME = "run_spec.yaml"
 
-    def __init__(self, get_process_dir: Callable, spec: Spec):
+    def __init__(self, get_process_dir: Callable, spec: BranchSpec):
         super().__init__()
         self.get_process_dir = get_process_dir
         self._spec = spec

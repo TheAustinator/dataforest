@@ -9,14 +9,14 @@ class RunIdCache(HashCash):
     Val: run_id (hash)
     """
 
-    def __init__(self, spec, process_catalogue_hash):
+    def __init__(self, spec, process_catalogue_cache):
         super().__init__()
         self._spec = spec
-        self._process_catalogue_hash = process_catalogue_hash
+        self._process_catalogue_cache = process_catalogue_cache
 
     def _get(self, process_name):
         run_spec_str = str(self._spec[process_name])
-        run_catalogue = self._process_catalogue_hash[process_name]
+        run_catalogue = self._process_catalogue_cache[process_name]
         if run_spec_str in run_catalogue.index:
             run_id_rows = run_catalogue.loc[run_spec_str]
             if len(run_id_rows) != 1:

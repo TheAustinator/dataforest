@@ -1,7 +1,8 @@
 from functools import wraps
 from typing import Callable, Iterable, Optional, Union, List, Tuple
 
-from dataforest.hooks.dataprocess.MetaDataProcess import MetaDataProcess
+from dataforest.config.MetaDataProcess import MetaDataProcess
+from dataforest.utils.ExceptionHandler import ExceptionHandler
 from dataforest.utils.exceptions import HookException
 
 
@@ -12,7 +13,7 @@ class dataprocess(metaclass=MetaDataProcess):
     Each `data_process` is tied to two levels of subdirectory -- an outer directory which is named to match the processes
     and an inner directory which is named to capture relevant details of the processes run state
     ✓ uses `ForestQuery` to generate directory names corresponding to `DataBranch.spec`
-    ✓ checks for `partition` in spec and sets it in data for `comparative` analyses
+    ✓ checks for `partition` in branch_spec and sets it in data for `comparative` analyses
     ✓ moves DataBranch data selection to `process_name` using `at`
     ✓ checks to ensure that specified input data is present
     - may make new tables and update them in the future
@@ -49,25 +50,25 @@ class dataprocess(metaclass=MetaDataProcess):
         self.process = func.__name__
 
         @wraps(func)
-        def wrapper(branch, run_name, *args, **kwargs):
+        def wrapper(branch, run_name, stop_on_error=True, stop_on_hook_error=True, *args, **kwargs):
             """
             Runs setup hooks, then processes, then attempts each cleanup hook,
             raising any errors at the end.
             """
             self.branch = branch
             self._name = run_name
-            self._run_hooks(self.setup_hooks)
+            self._run_hooks(self.setup_hooks, stop_on_hook_error=stop_on_hook_error)
             try:
                 return func(self.branch, run_name, *args, **kwargs)
             except Exception as e:
-                raise e
+                ExceptionHandler.handle(branch, e, "process.err", stop_on_error)
             finally:
-                self._run_hooks(self.clean_hooks, try_all=True)
+                self._run_hooks(self.clean_hooks, try_all=True, stop_on_hook_error=stop_on_hook_error)
 
         self.func = wrapper
         return wrapper
 
-    def _run_hooks(self, hooks: Iterable[Callable], try_all: bool = False):
+    def _run_hooks(self, hooks: Iterable[Callable], try_all: bool = False, stop_on_hook_error: bool = True):
         """
         Args:
             hooks: hooks to run
@@ -81,6 +82,8 @@ class dataprocess(metaclass=MetaDataProcess):
             except Exception as e:
                 hook_exceptions[str(hook.__name__)] = e
                 if not try_all:
-                    raise HookException(self.name, hook_exceptions)
+                    e = HookException(self.name, hook_exceptions)
+                    ExceptionHandler.handle(self.branch, e, "hooks.err", stop_on_hook_error)
         if hook_exceptions:
-            raise HookException(self.name, hook_exceptions)
+            e = HookException(self.name, hook_exceptions)
+            ExceptionHandler.handle(self.branch, e, "hooks.err", stop_on_hook_error)
