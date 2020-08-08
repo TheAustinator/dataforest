@@ -1,7 +1,6 @@
 matplotlib
 numpy
 pandas
-pathlib
 pyyaml
 termcolor
 Ipython

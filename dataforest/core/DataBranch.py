@@ -124,7 +124,7 @@ class DataBranch(DataBase):
         self.spec = self._init_spec(branch_spec)
         self.verbose = verbose
         self.logger = logging.getLogger(self.__class__.__name__)
-        # self.plot = self.PLOT_METHODS(self)
+        self.plot = self.PLOT_METHODS(self)
         self.process = self.PROCESS_METHODS(self, self.spec)
         # self.hyper = HyperparameterMethods(self)
         self.schema = self.SCHEMA_CLASS()

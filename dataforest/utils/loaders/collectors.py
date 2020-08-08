@@ -63,7 +63,9 @@ def _function_filter_hook(func):
 
 
 def _function_filter_plot(func):
-    return func.__name__.startswith("plot_")
+    if hasattr(func, "__name__"):
+        return func.__name__.startswith("plot_")
+    # otherwise is just a variable
 
 
 def _function_filter_process(func):
