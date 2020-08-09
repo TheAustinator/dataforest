@@ -120,13 +120,10 @@ class DataBranch(DataBase):
         self._current_process = current_process
         self._remote_root = remote_root
         self.root = Path(root)
-
         self.spec = self._init_spec(branch_spec)
         self.verbose = verbose
         self.logger = logging.getLogger(self.__class__.__name__)
-        # self.plot = self.PLOT_METHODS(self)
         self.process = self.PROCESS_METHODS(self, self.spec)
-        # self.hyper = HyperparameterMethods(self)
         self.schema = self.SCHEMA_CLASS()
         self._paths_exists = PathCache(self.root, self.spec, exists_req=True)
         self._paths = self._paths_exists.get_shared_memory_view(exist_req=False)

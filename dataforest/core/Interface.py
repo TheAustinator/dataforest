@@ -61,6 +61,7 @@ class Interface:
         remote_root: Optional[Union[str, Path]] = None,
         root_plots: bool = True,
         plot_kwargs: Optional[dict] = None,
+        overwrite_plots: Optional[Iterable[str]] = None,
         **kwargs,
     ) -> Union["DataBranch", "CellBranch", "DataTree", "CellTree"]:
         """
@@ -79,6 +80,8 @@ class Interface:
             remote_root:
             root_plots:
             plot_kwargs:
+            overwrite_plots: e.g. ["root", "cluster"]
+            # TODO implement overwrite plots
         """
         if not isinstance(input_paths, (list, tuple)):
             input_paths = [input_paths]

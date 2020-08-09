@@ -1,3 +1,4 @@
+import json
 from copy import deepcopy
 from typing import Union, List, Dict
 
@@ -68,7 +69,11 @@ class BranchSpec(list):
             process_order:
     """
 
-    def __init__(self, spec: Union[List[dict], "BranchSpec[RunSpec]"]):
+    def __init__(self, spec: Union[str, List[dict], "BranchSpec[RunSpec]"]):
+        if isinstance(spec, str):
+            spec = json.loads(spec)
+        if not isinstance(spec, (list, tuple)):
+            raise ValueError("spec must be convertible to a list or subclass")
         super().__init__([RunSpec(item) for item in spec])
         self._run_spec_lookup: Dict[str, "RunSpec"] = self._build_run_spec_lookup()
         self._precursors_lookup: Dict[str, List[str]] = self._build_precursors_lookup()
@@ -78,6 +83,11 @@ class BranchSpec(list):
             incl_root=True, incl_current=True
         )
         self.process_order: List[str] = [spec_item.name for spec_item in self]
+
+    @property
+    def shell_str(self):
+        """string version which can be passed via shell and loaded via json"""
+        return f"'{str(self)}'"
 
     def copy(self) -> "BranchSpec":
         return deepcopy(self)
@@ -182,7 +192,10 @@ class BranchSpec(list):
         """See class definition"""
         run_spec_lookup = {"root": RunSpec({})}
         for run_spec in self:
-            process_name = run_spec.name
+            try:
+                process_name = run_spec.name
+            except Exception as e:
+                raise e
             if process_name in run_spec_lookup:
                 raise DuplicateProcessName(process_name)
             run_spec_lookup[process_name] = run_spec
@@ -219,3 +232,6 @@ class BranchSpec(list):
 
     def __contains__(self, item):
         return item in self._run_spec_lookup
+
+    def __str__(self):
+        return super().__str__().replace("'", '"')
