@@ -35,7 +35,13 @@ class PlotMethods(metaclass=MetaPlotMethods):
         def wrapped(branch, method_name, *args, stop_on_error: bool = False, **kwargs):
             try:
                 process_run = branch[branch.current_process]
-                plot_dir = process_run.plot_map[method_name].parent
+                plot_name = method_name.replace("plot_", "", 1)
+
+                if plot_name in process_run.plot_map:
+                    plot_dir = process_run.plot_map[plot_name].parent
+                elif method_name in process_run.plot_map:
+                    plot_dir = process_run.plot_map[method_name].parent
+
                 plot_dir.mkdir(exist_ok=True)
                 return method(branch, *args, **kwargs)
             except Exception as e:
