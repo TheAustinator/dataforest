@@ -1,6 +1,7 @@
 import gc
 import logging
 from pathlib import Path
+from copy import deepcopy
 
 import pandas as pd
 import yaml
@@ -126,7 +127,7 @@ def hook_generate_plots(dp: dataprocess):
     plot_sources = dp.branch.plot.plot_method_lookup
 
     current_process = dp.branch.current_process
-    requested_plot_methods = dp.branch.plot.plot_methods[current_process]
+    requested_plot_methods = deepcopy(dp.branch.plot.plot_methods[current_process])
 
     for method in plot_sources.values():
         if method.__name__ in requested_plot_methods:
