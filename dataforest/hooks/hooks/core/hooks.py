@@ -123,6 +123,15 @@ def hook_catalogue(dp):
 
 @hook
 def hook_generate_plots(dp: dataprocess):
-    plot_methods = dp.branch.plot.plot_method_lookup
-    for method in plot_methods.values():
-        method(dp.branch)
+    plot_sources = dp.branch.plot.plot_method_lookup
+
+    current_process = dp.branch.current_process
+    requested_plot_methods = dp.branch.plot.plot_methods[current_process]
+
+    for method in plot_sources.values():
+        if method.__name__ in requested_plot_methods:
+            method(dp.branch)
+            requested_plot_methods.remove(method.__name__)
+
+    if len(requested_plot_methods) > 0:  # if not all requested mapped to functions in plot sources
+        logging.warning(f"Requested plotting methods {requested_plot_methods} are invalid so they were skipped.")
