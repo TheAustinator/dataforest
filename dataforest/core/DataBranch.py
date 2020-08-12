@@ -18,7 +18,7 @@ from dataforest.core.schema.ProcessSchema import ProcessSchema
 from dataforest.filesystem.io import ReaderMethods
 from dataforest.filesystem.io.WriterMethods import WriterMethods
 from dataforest.utils.exceptions import BadSubset, BadFilter
-from dataforest.utils.utils import update_recursive
+from dataforest.utils.utils import update_recursive, label_df_partitions
 
 
 class DataBranch(DataBase):
@@ -368,6 +368,11 @@ class DataBranch(DataBase):
                 df = self._do_subset(df, column, val)
             for column, val in filter_.items():
                 df = self._do_filter(df, column, val)
+        df.replace(" ", "_", regex=True, inplace=True)
+        partitions_list = self.spec.get_partition_list(process_name)
+        partitions = set().union(*partitions_list)
+        if partitions:
+            df = label_df_partitions(df, partitions, encodings=True)
         return df
 
     @staticmethod

@@ -21,7 +21,8 @@ def hook_comparative(dp):
     """Sets up DataBranch for comparative analysis"""
     if "_PARTITION_" in dp.branch.spec:
         logging.warning(
-            "`partition` found at base level of branch_spec. It should normally be specified under an individual processes"
+            "`partition` found at base level of branch_spec. It should normally be specified under an individual "
+            "processes"
         )
 
     if dp.comparative:
