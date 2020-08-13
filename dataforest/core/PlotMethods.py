@@ -28,6 +28,14 @@ class PlotMethods(metaclass=MetaPlotMethods):
     def plot_methods(self):
         return self.__class__.PLOT_METHODS
 
+    @property
+    def plot_kwargs_defaults(self):
+        return self.__class__.PLOT_KWARGS_DEFAULTS
+
+    @property
+    def plot_kwargs(self):
+        return self.__class__.PLOT_KWARGS
+
     def _wrap(self, method):
         """Wrap with mkdirs and logging"""
 

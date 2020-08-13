@@ -10,3 +10,11 @@ class MetaPlotMethods(MetaConfig):
     @property
     def PLOT_METHODS(cls):
         return cls.CONFIG["plot_methods"]
+
+    @property
+    def PLOT_KWARGS_DEFAULTS(cls):
+        return cls.CONFIG["plot_kwargs_defaults"]
+
+    @property
+    def PLOT_KWARGS(cls):
+        return cls.CONFIG["plot_kwargs"]

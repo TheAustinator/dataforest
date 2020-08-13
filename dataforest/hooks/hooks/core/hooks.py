@@ -10,6 +10,7 @@ from dataforest.hooks.dataprocess import dataprocess
 from dataforest.utils.catalogue import run_id_from_multi_row
 from dataforest.utils.exceptions import InputDataNotFound
 from dataforest.hooks.hook import hook
+from dataforest.hooks.hooks.core.functions import _get_all_plot_kwargs
 
 
 @hook
@@ -125,14 +126,18 @@ def hook_catalogue(dp):
 @hook
 def hook_generate_plots(dp: dataprocess):
     plot_sources = dp.branch.plot.plot_method_lookup
-
     current_process = dp.branch.current_process
     requested_plot_methods = deepcopy(dp.branch.plot.plot_methods[current_process])
 
     for method in plot_sources.values():
-        if method.__name__ in requested_plot_methods:
-            method(dp.branch)
-            requested_plot_methods.remove(method.__name__)
+        plot_name = method.__name__
+        if plot_name in requested_plot_methods:
+            all_kwargs = _get_all_plot_kwargs(dp, plot_name)
+            for kwargs in all_kwargs:
+                method(dp.branch, **kwargs)
+            requested_plot_methods.remove(plot_name)
 
     if len(requested_plot_methods) > 0:  # if not all requested mapped to functions in plot sources
-        logging.warning(f"Requested plotting methods {requested_plot_methods} are invalid so they were skipped.")
+        logging.warning(
+            f"Requested plotting methods {requested_plot_methods} are not implemented so they were skipped."
+        )
