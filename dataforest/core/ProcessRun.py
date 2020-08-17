@@ -85,7 +85,13 @@ class ProcessRun:
 
     @property
     def process_plot_map(self) -> Dict[str, Path]:
-        return {file_alias: self.plots_path / self._plot_lookup[file_alias] for file_alias in self._plot_lookup}
+        plot_map_dict = {}
+        for plot_name in self._plot_lookup:
+            plot_map_dict[plot_name] = {}
+            for plot_kwargs_key, plot_filepath in self._plot_lookup[plot_name].items():
+                plot_map_dict[plot_name][plot_kwargs_key] = self.plots_path / plot_filepath
+
+        return plot_map_dict
 
     @property
     def path_map(self) -> Dict[str, Path]:

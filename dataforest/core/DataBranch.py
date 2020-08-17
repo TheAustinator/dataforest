@@ -272,12 +272,16 @@ class DataBranch(DataBase):
                 f"plots already present for `root` at {self['root'].plots_path}. To regenerate plots, delete directory"
             )
             return
-        plot_kwargs = plot_kwargs if plot_kwargs else dict()
+
+        if plot_kwargs == None:
+            plot_kwargs = self.plot.plot_kwargs["root"]
+        # plot_kwargs = plot_kwargs if plot_kwargs else dict()
         root_plot_methods = self.plot.plot_methods.get("root", [])
-        for name in root_plot_methods:
-            kwargs = plot_kwargs.get(name, dict())
-            method = getattr(self.plot, name)
-            method(**kwargs)
+        for plot_name, plot_method in root_plot_methods.items():
+            kwargs_sets = plot_kwargs.get(plot_name, dict())
+            for kwargs in kwargs_sets.values():
+                method = getattr(self.plot, plot_method)
+                method(**kwargs)
 
     def is_process_plots_exist(self, process_name: str) -> bool:
         return self[process_name].plots_path.exists()

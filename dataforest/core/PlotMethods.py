@@ -43,12 +43,13 @@ class PlotMethods(metaclass=MetaPlotMethods):
         def wrapped(branch, method_name, *args, stop_on_error: bool = False, **kwargs):
             try:
                 process_run = branch[branch.current_process]
-                plot_name = method_name.replace("plot_", "", 1)
+                for key, value in branch.plot.plot_methods[branch.current_process].items():
+                    if value == method_name:
+                        plot_name = key  # look up plot name from plot_method name
 
                 if plot_name in process_run.plot_map:
-                    plot_dir = process_run.plot_map[plot_name].parent
-                elif method_name in process_run.plot_map:
-                    plot_dir = process_run.plot_map[method_name].parent
+                    for plot_kwargs_key, plot_filename in process_run.plot_map[plot_name].items():
+                        plot_dir = plot_filename.parent  # only need one sample dir
 
                 plot_dir.mkdir(exist_ok=True)
                 return method(branch, *args, **kwargs)

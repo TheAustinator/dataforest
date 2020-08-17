@@ -10,7 +10,6 @@ from dataforest.hooks.dataprocess import dataprocess
 from dataforest.utils.catalogue import run_id_from_multi_row
 from dataforest.utils.exceptions import InputDataNotFound
 from dataforest.hooks.hook import hook
-from dataforest.hooks.hooks.core.functions import _get_all_plot_kwargs
 
 
 @hook
@@ -123,17 +122,19 @@ def hook_catalogue(dp):
                 raise ValueError(f"run_id: {run_id} is not equal to stored: {run_id_stored} for {str(run_spec)}")
 
 
+# TODO-QC: take a check here
 @hook
 def hook_generate_plots(dp: dataprocess):
     plot_sources = dp.branch.plot.plot_method_lookup
     current_process = dp.branch.current_process
+    all_plot_kwargs_sets = dp.branch.plot.plot_kwargs[current_process]
     requested_plot_methods = deepcopy(dp.branch.plot.plot_methods[current_process])
 
     for method in plot_sources.values():
         plot_name = method.__name__
         if plot_name in requested_plot_methods:
-            all_kwargs = _get_all_plot_kwargs(dp, plot_name)
-            for kwargs in all_kwargs:
+            plot_kwargs_sets = all_plot_kwargs_sets[plot_name]
+            for kwargs in plot_kwargs_sets.values():
                 method(dp.branch, **kwargs)
             requested_plot_methods.remove(plot_name)
 
