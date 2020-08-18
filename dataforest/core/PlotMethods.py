@@ -3,6 +3,7 @@ from functools import wraps
 from dataforest.config.MetaPlotMethods import MetaPlotMethods
 from dataforest.utils import tether, copy_func
 from dataforest.utils.ExceptionHandler import ExceptionHandler
+from dataforest.utils.plots_config import get_plot_name_from_plot_method
 
 
 class PlotMethods(metaclass=MetaPlotMethods):
@@ -43,9 +44,9 @@ class PlotMethods(metaclass=MetaPlotMethods):
         def wrapped(branch, method_name, *args, stop_on_error: bool = False, **kwargs):
             try:
                 process_run = branch[branch.current_process]
-                for key, value in branch.plot.plot_methods[branch.current_process].items():
-                    if value == method_name:
-                        plot_name = key  # look up plot name from plot_method name
+                plot_name = get_plot_name_from_plot_method(
+                    branch.plot.plot_methods[branch.current_process], method_name
+                )
 
                 if plot_name in process_run.plot_map:
                     for plot_kwargs_key, plot_filename in process_run.plot_map[plot_name].items():

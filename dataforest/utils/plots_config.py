@@ -88,6 +88,15 @@ def parse_plot_map(config: dict):
     return all_plot_maps
 
 
+def get_plot_name_from_plot_method(process_plot_methods, plot_method_name):
+    """Reverse search for plot name in the config from plot method used"""
+    for key, value in process_plot_methods.items():
+        if value == plot_method_name:
+            plot_name = key  # look up plot name from plot_method name
+
+    return plot_name
+
+
 def _get_plot_method_from_plot_name(plot_name):
     """Infer plot method name from plot name, e.g. _UMIS_PER_CELL_HIST_ -> plot_umis_per_cell_hist"""
     if plot_name[0] == "_":

@@ -275,12 +275,15 @@ class DataBranch(DataBase):
 
         if plot_kwargs == None:
             plot_kwargs = self.plot.plot_kwargs["root"]
-        # plot_kwargs = plot_kwargs if plot_kwargs else dict()
+        root_plot_map = self["root"].plot_map
         root_plot_methods = self.plot.plot_methods.get("root", [])
+
         for plot_name, plot_method in root_plot_methods.items():
             kwargs_sets = plot_kwargs.get(plot_name, dict())
-            for kwargs in kwargs_sets.values():
+            for plot_kwargs_key, _kwargs in kwargs_sets.items():
                 method = getattr(self.plot, plot_method)
+                kwargs = deepcopy(_kwargs)
+                kwargs["plot_path"] = root_plot_map[plot_name][plot_kwargs_key]
                 method(**kwargs)
 
     def is_process_plots_exist(self, process_name: str) -> bool:

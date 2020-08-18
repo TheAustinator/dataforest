@@ -9,6 +9,7 @@ import yaml
 from dataforest.hooks.dataprocess import dataprocess
 from dataforest.utils.catalogue import run_id_from_multi_row
 from dataforest.utils.exceptions import InputDataNotFound
+from dataforest.utils.plots_config import get_plot_name_from_plot_method
 from dataforest.hooks.hook import hook
 
 
@@ -128,15 +129,21 @@ def hook_generate_plots(dp: dataprocess):
     plot_sources = dp.branch.plot.plot_method_lookup
     current_process = dp.branch.current_process
     all_plot_kwargs_sets = dp.branch.plot.plot_kwargs[current_process]
-    requested_plot_methods = deepcopy(dp.branch.plot.plot_methods[current_process])
+    process_plot_methods = dp.branch.plot.plot_methods[current_process]
+    process_plot_map = dp.branch[dp.branch.current_process].plot_map
+    requested_plot_methods = deepcopy(process_plot_methods)
 
     for method in plot_sources.values():
-        plot_name = method.__name__
-        if plot_name in requested_plot_methods:
+        plot_method_name = method.__name__
+        if plot_method_name in requested_plot_methods.values():
+            plot_name = get_plot_name_from_plot_method(process_plot_methods, plot_method_name)
             plot_kwargs_sets = all_plot_kwargs_sets[plot_name]
-            for kwargs in plot_kwargs_sets.values():
+            for plot_kwargs_key in plot_kwargs_sets.keys():
+                plot_path = process_plot_map[plot_name][plot_kwargs_key]
+                kwargs = deepcopy(plot_kwargs_sets[plot_kwargs_key])
+                kwargs["plot_path"] = plot_path
                 method(dp.branch, **kwargs)
-            requested_plot_methods.remove(plot_name)
+            requested_plot_methods.pop(plot_name)
 
     if len(requested_plot_methods) > 0:  # if not all requested mapped to functions in plot sources
         logging.warning(
