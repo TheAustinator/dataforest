@@ -187,12 +187,36 @@ def _get_default_plot_kwargs(config: dict):
     return default_plot_kwargs
 
 
-def _get_filename_from_plot_kwargs(plot_filename, plot_kwargs):
-    suffix_chain = ""
-    for key, value in sorted(list(plot_kwargs.items())):
-        suffix_chain += f"-{key}:{value}".replace(" ", "").lower()  # remove spaces
+def plot_kwargs_to_str(plot_kwargs):
+    """
+    Converts plot_kwargs dictionary into a deterministic string, sorted by keys
+    """
+    UP = "-"
+    DOWN = ":"
+    AND = "+"
+    str_chain = ""
 
-    return plot_filename + suffix_chain
+    def _helper(dict_: dict):
+        nonlocal str_chain
+        for key in sorted(dict_):
+            val = dict_[key]
+            str_chain += str(key)
+            if val is not None:
+                str_chain += DOWN
+            if val is None:
+                pass
+            elif isinstance(val, dict):
+                _helper(val)
+            elif isinstance(val, (set, list, tuple)):
+                str_chain += AND.join(map(str, val))
+            else:
+                str_chain += str(val)
+            str_chain += UP
+
+    _helper(plot_kwargs)
+    str_chain = str_chain.strip("-").lower()
+
+    return str_chain
 
 
 def _get_plot_kwargs_string(plot_kwargs: dict):  # TODO-QC: proper type checking
@@ -209,6 +233,6 @@ def _get_default_plot_filename(plot_name: str, plot_kwargs: dict, plot_kwargs_de
         plot_name = plot_name[1:]
     if plot_name[-1] == "_":
         plot_name = plot_name[:-1]
-    plot_filename = _get_filename_from_plot_kwargs(plot_name.lower(), plot_kwargs) + filename_ext
+    plot_filename = plot_name.lower() + "-" + plot_kwargs_to_str(plot_kwargs) + filename_ext
 
     return Path(plot_filename)

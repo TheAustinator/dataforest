@@ -79,6 +79,11 @@ class BranchSpec(list):
         )
         self.process_order: List[str] = [spec_item.name for spec_item in self]
 
+    @property
+    def shell_str(self):
+        """string version which can be passed via shell and loaded via json"""
+        return f"'{str(self)}'"
+
     def copy(self) -> "BranchSpec":
         return deepcopy(self)
 
