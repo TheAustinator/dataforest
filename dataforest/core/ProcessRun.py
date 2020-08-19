@@ -220,7 +220,7 @@ class ProcessRun:
         spec = self.branch.spec
         precursor_lookup = spec.get_precursors_lookup(incl_current=incl_current, incl_root=True)
         precursors = precursor_lookup[self.process_name]
-        process_runs = [self.branch[process_name] for process_name in precursors]
+        process_runs = [self] if plot_map else [self.branch[process_name] for process_name in precursors]
         pr_attr = "process_plot_map" if plot_map else "process_path_map"
         process_path_map_list = [getattr(pr, pr_attr) for pr in process_runs]
         path_map = dict()
