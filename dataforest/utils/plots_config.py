@@ -1,7 +1,6 @@
 from copy import deepcopy
 import json
 from collections import OrderedDict
-from pathlib import Path
 
 
 def parse_plot_methods(config: dict):
@@ -24,6 +23,7 @@ def parse_plot_methods(config: dict):
 def parse_plot_kwargs(config: dict):
     """Parse plot methods kwargs per process from plot_map"""
     plot_map = config["plot_map"]
+    plot_kwargs_defaults = config["plot_kwargs_defaults"]
     all_plot_kwargs = {}
     for process, plots in plot_map.items():
         all_plot_kwargs[process] = {}
@@ -34,11 +34,11 @@ def parse_plot_kwargs(config: dict):
             try:
                 plot_kwargs = plots[plot_name]["plot_kwargs"]
             except (KeyError, TypeError):
-                plot_kwargs = _get_default_plot_kwargs(config)
+                plot_kwargs = _get_default_plot_kwargs(plot_kwargs_defaults)
 
-            kwargs_feed = _get_plot_kwargs_feed(plot_kwargs, plot_name)
+            kwargs_feed = _get_plot_kwargs_feed(plot_kwargs, plot_kwargs_defaults, plot_name)
             kwargs_feed_mapped = _get_plot_kwargs_feed(
-                plot_kwargs, plot_name, map_to_default_kwargs=True, plot_kwargs_defaults=config["plot_kwargs_defaults"]
+                plot_kwargs, plot_kwargs_defaults, plot_name, map_to_default_kwargs=True,
             )
 
             for plot_kwargs_set, plot_kwargs_set_mapped in zip(kwargs_feed, kwargs_feed_mapped):
@@ -53,6 +53,7 @@ def parse_plot_map(config: dict):
     implicit definition returns a dictionary of default values for all kwargs
     """
     plot_map = config["plot_map"]
+    plot_kwargs_defaults = config["plot_kwargs_defaults"]
     all_plot_maps = {}
     for process, plots in plot_map.items():
         all_plot_maps[process] = {}
@@ -63,25 +64,23 @@ def parse_plot_map(config: dict):
             try:
                 all_plot_kwargs = plots[plot_name]["plot_kwargs"]
             except (KeyError, TypeError):
-                all_plot_kwargs = _get_default_plot_kwargs(config)
+                all_plot_kwargs = _get_default_plot_kwargs(plot_kwargs_defaults)
 
-            kwargs_feed = _get_plot_kwargs_feed(all_plot_kwargs, plot_name)
+            kwargs_feed = _get_plot_kwargs_feed(all_plot_kwargs, plot_kwargs_defaults, plot_name)
             kwargs_feed_mapped = _get_plot_kwargs_feed(
-                all_plot_kwargs,
-                plot_name,
+                plot_kwargs=all_plot_kwargs,
+                plot_kwargs_defaults=plot_kwargs_defaults,
+                plot_name=plot_name,
                 map_to_default_kwargs=True,
-                plot_kwargs_defaults=config["plot_kwargs_defaults"],
             )
 
             for i, (plot_kwargs_set, plot_kwargs_set_mapped) in enumerate(zip(kwargs_feed, kwargs_feed_mapped)):
                 try:
                     plot_filename = plots[plot_name]["filename"]
                     if type(plot_filename) == list:
-                        plot_filename = Path(plot_filename[i])
+                        plot_filename = _get_formatted_plot_filename(plot_filename[i], plot_kwargs_defaults)
                 except (KeyError, TypeError):
-                    plot_filename = _get_default_plot_filename(
-                        plot_name, plot_kwargs_set_mapped, config["plot_kwargs_defaults"]
-                    )
+                    plot_filename = _get_default_plot_filename(plot_name, plot_kwargs_set_mapped, plot_kwargs_defaults)
 
                 all_plot_maps[process][plot_name][_get_plot_kwargs_string(plot_kwargs_set)] = plot_filename
 
@@ -109,7 +108,7 @@ def _get_plot_method_from_plot_name(plot_name):
     return plot_method
 
 
-def _unify_kwargs_opt_lens(plot_kwargs, plot_name):
+def _unify_kwargs_opt_lens(plot_kwargs: dict, plot_kwargs_defaults: dict, plot_name: str):
     """
     Make all kwarg option counts equal so that we can get aligned in order options
 
@@ -118,7 +117,8 @@ def _unify_kwargs_opt_lens(plot_kwargs, plot_name):
         >>>     {
         >>>         "stratify": ["sample", "none"],
         >>>         "plot_size": "default"
-        >>>     }
+        >>>     },
+        >>>     plot_kwargs_defaults, plot_name
         >>> )
         # output
         {
@@ -139,8 +139,14 @@ def _unify_kwargs_opt_lens(plot_kwargs, plot_name):
         max_num_opts = 1  # means that there are no lists and just singular arguments
     if len(kwargs_num_options) > 0:  # check if the lists of options are equal to each other
         raise ValueError(
-            f"plot_kwargs['{plot_name}'] contains arguments with unequal number of options, should include the same number of options where there are multiple options or a single option."
+            f"'{plot_name}' contains arguments with unequal number of options, should include the same number of options where there are multiple options or a single option."
         )
+
+    # fill in plot_kwargs that are not defined
+    template_plot_kwargs = _get_default_plot_kwargs(plot_kwargs_defaults)
+    for key, value in template_plot_kwargs.items():
+        if key not in plot_kwargs:
+            plot_kwargs[key] = value
 
     for key, values in plot_kwargs.items():
         if type(values) != list:
@@ -169,8 +175,8 @@ def _map_kwargs_opts_to_values(plot_kwargs, plot_kwargs_defaults):
     return mapped_plot_kwargs
 
 
-def _get_plot_kwargs_feed(plot_kwargs: dict, plot_name: str, map_to_default_kwargs=False, plot_kwargs_defaults=None):
-    plot_kwargs = _unify_kwargs_opt_lens(plot_kwargs, plot_name)
+def _get_plot_kwargs_feed(plot_kwargs: dict, plot_kwargs_defaults: dict, plot_name: str, map_to_default_kwargs=False):
+    plot_kwargs = _unify_kwargs_opt_lens(plot_kwargs, plot_kwargs_defaults, plot_name)
     if map_to_default_kwargs:
         plot_kwargs = _map_kwargs_opts_to_values(plot_kwargs, plot_kwargs_defaults)
     plot_kwargs_feed = [
@@ -180,8 +186,12 @@ def _get_plot_kwargs_feed(plot_kwargs: dict, plot_name: str, map_to_default_kwar
     return plot_kwargs_feed
 
 
-def _get_default_plot_kwargs(config: dict):
-    kwargs_keys = config["plot_kwargs_defaults"].keys()
+def _get_default_plot_kwargs(plot_kwargs_defaults: dict):
+    kwargs_keys = list(plot_kwargs_defaults.keys())
+    for kwargs_key in reversed(kwargs_keys):
+        if "filename" in kwargs_key:  # ignore filename-related args (e.g., plot filename extension)
+            kwargs_keys.remove(kwargs_key)
+
     default_plot_kwargs = dict(zip(kwargs_keys, ["default"] * len(kwargs_keys)))
 
     return default_plot_kwargs
@@ -225,6 +235,16 @@ def _get_plot_kwargs_string(plot_kwargs: dict):  # TODO-QC: proper type checking
     return json.dumps(ord_plot_kwargs)
 
 
+def _get_formatted_plot_filename(plot_name: str, plot_kwargs_defaults: dict):
+    filename_ext = "." + plot_kwargs_defaults.get("filename_ext", "png").lower().replace(".", "")
+
+    plot_filename = plot_name.lower()
+    if "." not in plot_name:  # if plot map doesn't have extension yet
+        plot_filename += filename_ext
+
+    return plot_filename
+
+
 def _get_default_plot_filename(plot_name: str, plot_kwargs: dict, plot_kwargs_defaults: dict):
     """Infer plot filename from plot name, e.g. _UMIS_PER_CELL_HIST_ -> umis_per_cell_hist.png"""
     filename_ext = "." + plot_kwargs_defaults.get("filename_ext", "png").lower().replace(".", "")
@@ -235,4 +255,4 @@ def _get_default_plot_filename(plot_name: str, plot_kwargs: dict, plot_kwargs_de
         plot_name = plot_name[:-1]
     plot_filename = plot_name.lower() + "-" + plot_kwargs_to_str(plot_kwargs) + filename_ext
 
-    return Path(plot_filename)
+    return plot_filename
