@@ -1,6 +1,7 @@
 import gc
 import logging
 from pathlib import Path
+import shutil
 
 import pandas as pd
 import yaml
@@ -127,3 +128,10 @@ def hook_generate_plots(dp: dataprocess):
     plot_methods = dp.branch.plot.plot_method_lookup
     for method in plot_methods.values():
         method(dp.branch)
+
+
+@hook
+def hook_clear_logs(dp: dataprocess):
+    logs_path = dp.branch[dp.name].logs_path
+    if logs_path.exists():
+        shutil.rmtree(str(logs_path), ignore_errors=True)
