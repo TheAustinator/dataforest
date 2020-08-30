@@ -11,7 +11,7 @@ def parse_requirements(requirements_path):
         return f.read().splitlines()
 
 
-requirements = parse_requirements("requirements/requirements.txt")
+requirements = parse_requirements("requirements.txt")
 test_requirements = parse_requirements("requirements/requirements-test.txt")
 dev_requirements = parse_requirements("requirements/requirements-dev.txt")
 
