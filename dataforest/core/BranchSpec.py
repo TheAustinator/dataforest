@@ -19,41 +19,21 @@ class BranchSpec(list):
         >>> # NOTE: conceptual illustration only, not real processes
         >>> branch_spec = [
         >>>     {
-        >>>         "_PROCESS_": "normalize",
-        >>>         "_PARAMS_": {
-        >>>             "min_genes": 5,
-        >>>             "max_genes": 5000,
-        >>>             "min_cells": 5,
-        >>>             "nfeatures": 30,
-        >>>             "perc_mito_cutoff": 20,
-        >>>             "method": "seurat_default",
-        >>>         }
-        >>>         "_SUBSET_": {
-        >>>             "indication": {"disease_1", "disease_3"},
-        >>>             "collection_center": "mass_general",
-        >>>         },
-        >>>         "_FILTER_": {
-        >>>             "donor": "D115"
-        >>>         }
-        >>>     },
-        >>>     {
         >>>         "_PROCESS_": "reduce",    # dimensionality reduction
         >>>         "_ALIAS_": "linear_dim_reduce",
         >>>         "_PARAMS_": {
         >>>             "algorithm": "pca",
-        >>>             "n_pcs": 30,
+        >>>             "n_pcs": 30
         >>>         }
         >>>     },
         >>>     {
         >>>         "_PROCESS_": "reduce",
         >>>         "_ALIAS_": "nonlinear_dim_reduce",
-        >>>         "_PARAMS_": {
-        >>>             "algorithm": "umap",
-        >>>             "n_neighbors": 15,
-        >>>             "min_dist": 0.1,
-        >>>             "n_components": 2,
-        >>>             "metric": "euclidean"
-        >>>         }
+        >>>         "_PARAMS_": ...
+        >>>     },
+        >>>     {
+        >>>         "_PROCESS_": "dispersity"
+        >>>         "_PARAMS_": ...
         >>>     }
         >>> ]
         >>> branch_spec = BranchSpec(branch_spec)
@@ -192,10 +172,7 @@ class BranchSpec(list):
         """See class definition"""
         run_spec_lookup = {"root": RunSpec({})}
         for run_spec in self:
-            try:
-                process_name = run_spec.name
-            except Exception as e:
-                raise e
+            process_name = run_spec.name
             if process_name in run_spec_lookup:
                 raise DuplicateProcessName(process_name)
             run_spec_lookup[process_name] = run_spec
