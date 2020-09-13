@@ -100,7 +100,7 @@ class DataBranch(DataBase):
     _METADATA_NAME: dict = NotImplementedError("Should be implemented by superclass")
     _COPY_KWARGS: dict = {
         "root": "root",
-        "branch_spec": "branch_spec",
+        "branch_spec": "spec",
         "verbose": "verbose",
         "current_process": "current_process",
     }
