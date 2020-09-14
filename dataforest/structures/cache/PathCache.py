@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from dataforest.structures.cache.HashCash import HashCash
-from dataforest.core.Spec import Spec
+from dataforest.core.BranchSpec import BranchSpec
 from dataforest.structures.cache.RunCatalogueCache import RunCatalogCache
 from dataforest.structures.cache.RunIdCache import RunIdCache
 
@@ -19,13 +19,13 @@ class PathCache(HashCash):
 
     Key (str): process name
 
-    Val (Optional[Path]): path to process run matching spec
+    Val (Optional[Path]): path to process run matching branch_spec
         `process_run_path` = `process_path` / `run_id`
     """
 
-    def __init__(self, root_dir: Path, spec: Spec, exists_req: bool):
+    def __init__(self, root: Path, spec: BranchSpec, exists_req: bool):
         super().__init__()
-        self._cache["root"] = root_dir
+        self._cache["root"] = root
         self._spec = spec
         self._exists_req = exists_req
         self._process_catalogue_cache = RunCatalogCache(self.get_process_dir, self._spec)

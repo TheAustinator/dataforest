@@ -1,12 +1,11 @@
-import json
 from copy import deepcopy
-from typing import Union, List, Dict, Optional
+from typing import Union, List, Dict
 
+from dataforest.core.RunSpec import RunSpec
 from dataforest.utils.exceptions import DuplicateProcessName
-from dataforest.utils.utils import order_dict
 
 
-class Spec(list):
+class BranchSpec(list):
     """
     Specification of a series of `RunSpec`s to be run sequentially, each of
     which provide descriptors for a process run. If two runs of the same
@@ -17,10 +16,10 @@ class Spec(list):
         spec: core representation which this class wraps
     Examples:
         >>> # NOTE: conceptual illustration only, not real processes
-        >>> spec = [
+        >>> branch_spec = [
         >>>     {
-        >>>         "process": "normalize",
-        >>>         "params": {
+        >>>         "_PROCESS_": "normalize",
+        >>>         "_PARAMS_": {
         >>>             "min_genes": 5,
         >>>             "max_genes": 5000,
         >>>             "min_cells": 5,
@@ -28,26 +27,26 @@ class Spec(list):
         >>>             "perc_mito_cutoff": 20,
         >>>             "method": "seurat_default",
         >>>         }
-        >>>         "subset": {
+        >>>         "_SUBSET_": {
         >>>             "indication": {"disease_1", "disease_3"},
         >>>             "collection_center": "mass_general",
         >>>         },
-        >>>         "filter": {
+        >>>         "_FILTER_": {
         >>>             "donor": "D115"
         >>>         }
         >>>     },
         >>>     {
-        >>>         "process": "reduce",    # dimensionality reduction
-        >>>         "alias": "linear_dim_reduce",
-        >>>         "params": {
+        >>>         "_PROCESS_": "reduce",    # dimensionality reduction
+        >>>         "_ALIAS_": "linear_dim_reduce",
+        >>>         "_PARAMS_": {
         >>>             "algorithm": "pca",
         >>>             "pca_npcs": 30,
         >>>         }
         >>>     },
         >>>     {
-        >>>         "process": "reduce",
-        >>>         "alias": "nonlinear_dim_reduce",
-        >>>         "params": {
+        >>>         "_PROCESS_": "reduce",
+        >>>         "_ALIAS_": "nonlinear_dim_reduce",
+        >>>         "_PARAMS_": {
         >>>             "algorithm": "umap",
         >>>             "n_neighbors": 15,
         >>>             "min_dist": 0.1,
@@ -56,7 +55,7 @@ class Spec(list):
         >>>         }
         >>>     }
         >>> ]
-        >>> spec = Spec(spec)
+        >>> branch_spec = BranchSpec(branch_spec)
         Attributes:
             _run_spec_lookup: used for `RunSpec` lookup by process_name rather
                 than int index
@@ -69,7 +68,7 @@ class Spec(list):
             process_order:
     """
 
-    def __init__(self, spec: Union[List[dict], "Spec[RunSpec]"]):
+    def __init__(self, spec: Union[List[dict], "BranchSpec[RunSpec]"]):
         super().__init__([RunSpec(item) for item in spec])
         self._run_spec_lookup: Dict[str, "RunSpec"] = self._build_run_spec_lookup()
         self._precursors_lookup: Dict[str, List[str]] = self._build_precursors_lookup()
@@ -80,7 +79,12 @@ class Spec(list):
         )
         self.process_order: List[str] = [spec_item.name for spec_item in self]
 
-    def copy(self) -> "Spec":
+    @property
+    def shell_str(self):
+        """string version which can be passed via shell and loaded via json"""
+        return f"'{str(self)}'"
+
+    def copy(self) -> "BranchSpec":
         return deepcopy(self)
 
     def get_precursors_lookup(self, incl_current: bool = False, incl_root: bool = False) -> Dict[str, List[str]]:
@@ -129,36 +133,36 @@ class Spec(list):
             operation_list:
 
         Examples:
-            >>> spec = [
+            >>> branch_spec = [
             >>>     {
-            >>>         "process": "normalize",
-            >>>         "params": {}
-            >>>         "subset": {
+            >>>         "_PROCESS_": "normalize",
+            >>>         "_PARAMS_": {}
+            >>>         "_SUBSET_": {
             >>>             "indication": {"disease_1", "disease_3"},
             >>>             "collection_center": "mass_general",
             >>>         },
-            >>>         "filter": {
+            >>>         "_FILTER_": {
             >>>             "donor": "D115"
             >>>         }
             >>>     },
             >>>     {
-            >>>         "process": "reduce",
-            >>>         "alias": "linear_dim_reduce",
-            >>>         "subset": {
+            >>>         "_PROCESS_": "reduce",
+            >>>         "_ALIAS_": "linear_dim_reduce",
+            >>>         "_SUBSET_": {
             >>>             "indication": "disease_1"
             >>>         }
             >>>     },
             >>>     {
-            >>>         "process": "reduce",
-            >>>         "alias": "nonlinear_dim_reduce",
-            >>>         "params": {}
-            >>>         "subset": {
+            >>>         "_PROCESS_": "reduce",
+            >>>         "_ALIAS_": "nonlinear_dim_reduce",
+            >>>         "_PARAMS_": {}
+            >>>         "_SUBSET_": {
             >>>             "sample_date": "20200115"
             >>>         }
             >>>     }
             >>> ]
-            >>> spec = Spec(spec)
-            >>> subset_list = spec._get_data_operation_list("linear_dim_reduce", "subset")
+            >>> branch_spec = BranchSpec(branch_spec)
+            >>> subset_list = branch_spec._get_data_operation_list("linear_dim_reduce", "subset")
             >>> subset_list
             >>> [
             >>>     {
@@ -208,7 +212,10 @@ class Spec(list):
     def __getitem__(self, item: Union[str, int]) -> "RunSpec":
         """Get `RunSpec` either via `int` index or `name`"""
         if not isinstance(item, int):
-            return self._run_spec_lookup[item]
+            try:
+                return self._run_spec_lookup[item]
+            except Exception as e:
+                raise e
         else:
             return super().__getitem__(item)
 
@@ -217,50 +224,3 @@ class Spec(list):
 
     def __contains__(self, item):
         return item in self._run_spec_lookup
-
-
-class RunSpec(dict):
-    """
-    Specification to run a single process.
-    Keys:
-        process (str): name of the `dataprocess` decorated function to execute
-        alias (Optional[str]): given name, which is required when multiple of
-            the same `process` are to exist in the same `Spec`
-        params: parameters for `process`
-        subset, filter, partition: see dataforest.core.DataBranch docs
-    """
-
-    @property
-    def name(self) -> str:
-        return self.get("alias", self["process"])
-
-    @property
-    def process(self) -> str:
-        return self["process"]
-
-    @property
-    def alias(self) -> Optional[str]:
-        return self.get("alias", None)
-
-    @property
-    def params(self) -> dict:
-        return self.get("params", {})
-
-    @property
-    def subset(self) -> dict:
-        return self.get("subset", {})
-
-    @property
-    def filter(self) -> dict:
-        return self.get("filter", {})
-
-    @property
-    def partition(self) -> dict:
-        return self.get("partition", {})
-
-    def ordered(self) -> dict:
-        """Order dict alphabetically for deterministic string representation"""
-        return order_dict(self)
-
-    def __str__(self):
-        return str(self.ordered())

@@ -12,6 +12,10 @@ def collect_processes(path):
     return _collector(path, "process.py", _function_filter_process)
 
 
+def collect_plots(path):
+    return _collector(path, func_filter=_function_filter_plot)
+
+
 def _collector(path, filename: Optional[str] = None, func_filter: Optional[Callable] = None):
     # TODO: fragile to windows -- test
     funcs = dict()
@@ -56,6 +60,12 @@ def _filter_private(dict_):
 
 def _function_filter_hook(func):
     return func.__name__.startswith("hook_")
+
+
+def _function_filter_plot(func):
+    if hasattr(func, "__name__"):
+        return func.__name__.startswith("plot_")
+    # otherwise is just a variable
 
 
 def _function_filter_process(func):

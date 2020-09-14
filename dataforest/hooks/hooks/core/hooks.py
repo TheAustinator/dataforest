@@ -1,12 +1,15 @@
 import gc
 import logging
 from pathlib import Path
+from copy import deepcopy
 
 import pandas as pd
 import yaml
 
+from dataforest.hooks.dataprocess import dataprocess
 from dataforest.utils.catalogue import run_id_from_multi_row
 from dataforest.utils.exceptions import InputDataNotFound
+from dataforest.utils.plots_config import get_plot_name_from_plot_method
 from dataforest.hooks.hook import hook
 
 
@@ -18,15 +21,15 @@ def hook_goto_process(dp):
 @hook(attrs=["comparative"])
 def hook_comparative(dp):
     """Sets up DataBranch for comparative analysis"""
-    if "partition" in dp.branch.spec:
+    if "_PARTITION_" in dp.branch.spec:
         logging.warning(
-            "`partition` found at base level of spec. It should normally be specified under an individual processes"
+            "`partition` found at base level of branch_spec. It should normally be specified under an individual processes"
         )
 
     if dp.comparative:
-        partition = dp.branch.spec[dp.name].get("partition", None)
+        partition = dp.branch.spec[dp.name].get("_PARTITION_", None)
         if partition is None:
-            example_dict = {dp.name: {"partition": {"var_1", "var_2"}}}
+            example_dict = {dp.name: {"_PARTITION_": {"var_1", "var_2"}}}
             raise ValueError(
                 f"When `dataprocess` arg `comparative=True`, `branch.spec` must contain the key "
                 f"'partition' nested inside the decorated processes name. I.e.: {example_dict}"
@@ -50,8 +53,25 @@ def hook_mkdirs(dp):
     process_path = dp.branch.paths_exists.get_process_dir(dp.name)
     process_path.mkdir(parents=True, exist_ok=True)
     run_path = dp.branch.paths[dp.name]
-    if not run_path.exists():
-        run_path.mkdir(parents=True, exist_ok=True)
+    run_path.mkdir(parents=True, exist_ok=True)
+    if hasattr(dp, "plots") and dp.plots:
+        plots_dir = run_path / "_plots"
+        plots_dir.mkdir(exist_ok=True)
+
+
+@hook
+def hook_mark_incomplete(dp):
+    token_path = dp.branch[dp.name].path / "INCOMPLETE"
+    try:
+        token_path.touch(exist_ok=True)
+    except Exception as e:
+        raise e
+
+
+@hook
+def hook_mark_complete(dp):
+    token_path = dp.branch[dp.name].path / "INCOMPLETE"
+    token_path.unlink(missing_ok=True)
 
 
 @hook
@@ -101,3 +121,31 @@ def hook_catalogue(dp):
             run_id_stored = run_id_from_multi_row(run_id_rows)
             if run_id != run_id_stored:
                 raise ValueError(f"run_id: {run_id} is not equal to stored: {run_id_stored} for {str(run_spec)}")
+
+
+# TODO-QC: take a check here
+@hook
+def hook_generate_plots(dp: dataprocess):
+    plot_sources = dp.branch.plot.plot_method_lookup
+    current_process = dp.branch.current_process
+    all_plot_kwargs_sets = dp.branch.plot.plot_kwargs[current_process]
+    process_plot_methods = dp.branch.plot.plot_methods[current_process]
+    process_plot_map = dp.branch[dp.branch.current_process].plot_map
+    requested_plot_methods = deepcopy(process_plot_methods)
+
+    for method in plot_sources.values():
+        plot_method_name = method.__name__
+        if plot_method_name in requested_plot_methods.values():
+            plot_name = get_plot_name_from_plot_method(process_plot_methods, plot_method_name)
+            plot_kwargs_sets = all_plot_kwargs_sets[plot_name]
+            for plot_kwargs_key in plot_kwargs_sets.keys():
+                plot_path = process_plot_map[plot_name][plot_kwargs_key]
+                kwargs = deepcopy(plot_kwargs_sets[plot_kwargs_key])
+                kwargs["plot_path"] = plot_path
+                method(dp.branch, **kwargs)
+            requested_plot_methods.pop(plot_name)
+
+    if len(requested_plot_methods) > 0:  # if not all requested mapped to functions in plot sources
+        logging.warning(
+            f"Requested plotting methods {requested_plot_methods} are not implemented so they were skipped."
+        )

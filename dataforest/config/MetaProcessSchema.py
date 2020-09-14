@@ -4,6 +4,7 @@ from operator import le, ge
 from pathlib import Path
 
 from dataforest.config.MetaConfig import MetaConfig
+from dataforest.utils.plots_config import parse_plot_map
 
 
 class MetaProcessSchema(MetaConfig):
@@ -17,6 +18,10 @@ class MetaProcessSchema(MetaConfig):
     @property
     def FILE_MAP(cls):
         return cls["file_map"]
+
+    @property
+    def PLOT_MAP(cls):  # TODO-QC: process plot map starting here? Make it into a class where you can fetch kwargs?
+        return parse_plot_map(cls.CONFIG)
 
     @property
     def LAYERS(cls):
