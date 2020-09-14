@@ -14,7 +14,7 @@ class FileIO:
 
     def __init__(self, filepath: Union[str, Path], method: Callable, method_kwargs: dict):
         # TODO: handle H5
-        self.filepath = filepath
+        self.filepath = Path(filepath)
         self.method = method
         self.method_kwargs = method_kwargs
 

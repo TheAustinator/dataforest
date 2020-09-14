@@ -1,10 +1,12 @@
 import gc
 import logging
 from pathlib import Path
+import shutil
 
 import pandas as pd
 import yaml
 
+from dataforest.hooks.dataprocess import dataprocess
 from dataforest.utils.catalogue import run_id_from_multi_row
 from dataforest.utils.exceptions import InputDataNotFound
 from dataforest.hooks.hook import hook
@@ -18,15 +20,16 @@ def hook_goto_process(dp):
 @hook(attrs=["comparative"])
 def hook_comparative(dp):
     """Sets up DataBranch for comparative analysis"""
-    if "partition" in dp.branch.spec:
+    if "_PARTITION_" in dp.branch.spec:
         logging.warning(
-            "`partition` found at base level of spec. It should normally be specified under an individual processes"
+            "`partition` found at base level of branch_spec. It should normally be specified under an individual "
+            "processes"
         )
 
     if dp.comparative:
-        partition = dp.branch.spec[dp.name].get("partition", None)
+        partition = dp.branch.spec[dp.name].get("_PARTITION_", None)
         if partition is None:
-            example_dict = {dp.name: {"partition": {"var_1", "var_2"}}}
+            example_dict = {dp.name: {"_PARTITION_": {"var_1", "var_2"}}}
             raise ValueError(
                 f"When `dataprocess` arg `comparative=True`, `branch.spec` must contain the key "
                 f"'partition' nested inside the decorated processes name. I.e.: {example_dict}"
@@ -50,8 +53,25 @@ def hook_mkdirs(dp):
     process_path = dp.branch.paths_exists.get_process_dir(dp.name)
     process_path.mkdir(parents=True, exist_ok=True)
     run_path = dp.branch.paths[dp.name]
-    if not run_path.exists():
-        run_path.mkdir(parents=True, exist_ok=True)
+    run_path.mkdir(parents=True, exist_ok=True)
+    if hasattr(dp, "plots") and dp.plots:
+        plots_dir = run_path / "_plots"
+        plots_dir.mkdir(exist_ok=True)
+
+
+@hook
+def hook_mark_incomplete(dp):
+    token_path = dp.branch[dp.name].path / "INCOMPLETE"
+    try:
+        token_path.touch(exist_ok=True)
+    except Exception as e:
+        raise e
+
+
+@hook
+def hook_mark_complete(dp):
+    token_path = dp.branch[dp.name].path / "INCOMPLETE"
+    token_path.unlink(missing_ok=True)
 
 
 @hook
@@ -101,3 +121,17 @@ def hook_catalogue(dp):
             run_id_stored = run_id_from_multi_row(run_id_rows)
             if run_id != run_id_stored:
                 raise ValueError(f"run_id: {run_id} is not equal to stored: {run_id_stored} for {str(run_spec)}")
+
+
+@hook
+def hook_generate_plots(dp: dataprocess):
+    plot_methods = dp.branch.plot.plot_method_lookup
+    for method in plot_methods.values():
+        method(dp.branch)
+
+
+@hook
+def hook_clear_logs(dp: dataprocess):
+    logs_path = dp.branch[dp.name].logs_path
+    if logs_path.exists():
+        shutil.rmtree(str(logs_path), ignore_errors=True)

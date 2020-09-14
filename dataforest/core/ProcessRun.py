@@ -20,20 +20,22 @@ class ProcessRun:
     def __init__(self, branch: "DataBranch", process_name: str, process: str):
         self.logger = logging.getLogger(f"ProcessRun - {process_name}")
         if process_name not in branch.spec and process_name != "root":
-            raise ValueError(f'key "{process_name}" not in spec: {branch.spec}')
+            raise ValueError(f'key "{process_name}" not in branch_spec: {branch.spec}')
         self.process_name = process_name
         self.process = process
         self._branch = branch
         self._layers_files = self._build_layers_files()
         self._file_lookup = self._build_file_lookup()
+        self._plot_lookup = self._build_plot_lookup()
         self._path_map = None
+        self._plot_map = None
         self._path_map_prior = None
 
     @property
     def branch(self) -> "DataBranch":
         """
         DataBranch `at` current `ProcessRun` node, which is cached after initial
-        access. If the parent DataBranch has no metadata yet, the access to the
+        access. If the parent DataBranch has no sample_metadata yet, the access to the
         current node should only be used for paths, as the parent DataBranch is
         returned.
         """
@@ -45,16 +47,24 @@ class ProcessRun:
         return self.branch.paths[self.process_name]
 
     @property
+    def logs_path(self) -> Path:
+        return self.path / "_logs"
+
+    @property
+    def plots_path(self) -> Path:
+        return self.path / "_plots"
+
+    @property
     def process_meta(self) -> pd.DataFrame:
         """
-        Gets additional metadata created by the current process, which is
-        usually used to merge with the overall metadata.
+        Gets additional sample_metadata created by the current process, which is
+        usually used to merge with the overall sample_metadata.
         """
         meta_path = self.path_map["meta"]
         try:
             return pd.read_csv(meta_path, sep="\t", index_col=0)
         except FileNotFoundError:
-            raise FileNotFoundError(f'No additional metadata for "{self.process_name}"')
+            raise FileNotFoundError(f'No additional sample_metadata for "{self.process_name}"')
 
     @property
     def files(self) -> List[str]:
@@ -74,6 +84,10 @@ class ProcessRun:
         return {file_alias: self.path / self._file_lookup[file_alias] for file_alias in self._file_lookup}
 
     @property
+    def process_plot_map(self) -> Dict[str, Path]:
+        return {file_alias: self.plots_path / self._plot_lookup[file_alias] for file_alias in self._plot_lookup}
+
+    @property
     def path_map(self) -> Dict[str, Path]:
         """
         Path map like `process_path_map`, but including files which are not
@@ -84,6 +98,12 @@ class ProcessRun:
         if self._path_map is None:
             self._path_map = self._build_path_map(incl_current=True)
         return self._path_map
+
+    @property
+    def plot_map(self) -> Dict[str, Path]:
+        if self._plot_map is None:
+            self._plot_map = self._build_path_map(incl_current=True, plot_map=True)
+        return self._plot_map
 
     @property
     def path_map_prior(self) -> Dict[str, Path]:
@@ -109,14 +129,28 @@ class ProcessRun:
 
     @property
     def done(self) -> bool:
+        if self.path.exists() and not (self.path / "INCOMPLETE").exists():
+            if len(self.files) > 0 or self.logs_path.exists():
+                return True
+        return False
+
+    @property
+    def success(self) -> bool:
         """
         Checks whether run is done by checking whether output directory contains non-logging or temp files
         """
         # TODO: make more robust by adding `DONE_REQUIREMENT_FILES` to `ProcessSchema`
         if self.path is not None and self.path.exists():
-            output_file_check = lambda x: not (x.endswith("out") or x.endswith("err") or x.startswith("temp"))
-            output_files = filter(output_file_check, self.files)
-            return len(list(output_files)) > 0
+            if (self.path / "meta.tsv").exists() and not self.failed:
+                return True
+        return False
+
+    @property
+    def failed(self) -> bool:
+        if self.path is not None and self.path.exists():
+            error_files = ["process.err", "hooks.err"]
+            if not set(error_files).intersection(self.logs_path.iterdir()):
+                return True
         return False
 
     @property
@@ -128,8 +162,10 @@ class ProcessRun:
         """
         Prints stdout and stderr log files
         """
-        stdouts = list(filter(lambda x: str(x).endswith(".out"), self.filepaths))
-        stderrs = list(filter(lambda x: str(x).endswith(".err"), self.filepaths))
+        log_dir = self.path / "_logs"
+        log_files = log_dir.iterdir()
+        stdouts = list(filter(lambda x: str(x).endswith(".out"), log_files))
+        stderrs = list(filter(lambda x: str(x).endswith(".err"), log_files))
         if (len(stdouts) == 0) and (len(stderrs) == 0):
             raise ValueError(f"No logs for processes: {self.process_name}")
         for stdout in stdouts:
@@ -144,7 +180,7 @@ class ProcessRun:
                 print(f.read())
 
     def subprocess_runs(self, process_name: str) -> pd.DataFrame:
-        """DataFrame of spec info for all runs of a given subprocess"""
+        """DataFrame of branch_spec info for all runs of a given subprocess"""
         raise NotImplementedError()
 
     def _build_layers_files(self) -> Dict[str, str]:
@@ -166,7 +202,10 @@ class ProcessRun:
         file_lookup.update(self._layers_files)
         return file_lookup
 
-    def _build_path_map(self, incl_current: bool = False) -> Dict[str, Path]:
+    def _build_plot_lookup(self) -> Dict[str, str]:
+        return self.branch.schema.__class__.PLOT_MAP.get(self.process, {})
+
+    def _build_path_map(self, incl_current: bool = False, plot_map: bool = False) -> Dict[str, Path]:
         """
         See `path_map` property
         Args:
@@ -176,7 +215,8 @@ class ProcessRun:
         precursor_lookup = spec.get_precursors_lookup(incl_current=incl_current, incl_root=True)
         precursors = precursor_lookup[self.process_name]
         process_runs = [self.branch[process_name] for process_name in precursors]
-        process_path_map_list = [pr.process_path_map for pr in process_runs]
+        pr_attr = "process_plot_map" if plot_map else "process_path_map"
+        process_path_map_list = [getattr(pr, pr_attr) for pr in process_runs]
         path_map = dict()
         for process_path_map in process_path_map_list:
             path_map.update(process_path_map)

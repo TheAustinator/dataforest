@@ -19,6 +19,10 @@ class MetaProcessSchema(MetaConfig):
         return cls["file_map"]
 
     @property
+    def PLOT_MAP(cls):
+        return cls["plot_map"]
+
+    @property
     def LAYERS(cls):
         return cls["layers"]
 
