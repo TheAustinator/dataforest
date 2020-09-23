@@ -1,3 +1,4 @@
+import json
 from copy import deepcopy
 from typing import Union, List, Dict
 
@@ -18,41 +19,21 @@ class BranchSpec(list):
         >>> # NOTE: conceptual illustration only, not real processes
         >>> branch_spec = [
         >>>     {
-        >>>         "_PROCESS_": "normalize",
-        >>>         "_PARAMS_": {
-        >>>             "min_genes": 5,
-        >>>             "max_genes": 5000,
-        >>>             "min_cells": 5,
-        >>>             "nfeatures": 30,
-        >>>             "perc_mito_cutoff": 20,
-        >>>             "method": "seurat_default",
-        >>>         }
-        >>>         "_SUBSET_": {
-        >>>             "indication": {"disease_1", "disease_3"},
-        >>>             "collection_center": "mass_general",
-        >>>         },
-        >>>         "_FILTER_": {
-        >>>             "donor": "D115"
-        >>>         }
-        >>>     },
-        >>>     {
         >>>         "_PROCESS_": "reduce",    # dimensionality reduction
         >>>         "_ALIAS_": "linear_dim_reduce",
         >>>         "_PARAMS_": {
         >>>             "algorithm": "pca",
-        >>>             "pca_npcs": 30,
+        >>>             "n_pcs": 30
         >>>         }
         >>>     },
         >>>     {
         >>>         "_PROCESS_": "reduce",
         >>>         "_ALIAS_": "nonlinear_dim_reduce",
-        >>>         "_PARAMS_": {
-        >>>             "algorithm": "umap",
-        >>>             "n_neighbors": 15,
-        >>>             "min_dist": 0.1,
-        >>>             "n_components": 2,
-        >>>             "metric": "euclidean"
-        >>>         }
+        >>>         "_PARAMS_": ...
+        >>>     },
+        >>>     {
+        >>>         "_PROCESS_": "dispersity"
+        >>>         "_PARAMS_": ...
         >>>     }
         >>> ]
         >>> branch_spec = BranchSpec(branch_spec)
@@ -68,7 +49,11 @@ class BranchSpec(list):
             process_order:
     """
 
-    def __init__(self, spec: Union[List[dict], "BranchSpec[RunSpec]"]):
+    def __init__(self, spec: Union[str, List[dict], "BranchSpec[RunSpec]"]):
+        if isinstance(spec, str):
+            spec = json.loads(spec)
+        if not isinstance(spec, (list, tuple)):
+            raise ValueError("spec must be convertible to a list or subclass")
         super().__init__([RunSpec(item) for item in spec])
         self._run_spec_lookup: Dict[str, "RunSpec"] = self._build_run_spec_lookup()
         self._precursors_lookup: Dict[str, List[str]] = self._build_precursors_lookup()
@@ -224,3 +209,6 @@ class BranchSpec(list):
 
     def __contains__(self, item):
         return item in self._run_spec_lookup
+
+    def __str__(self):
+        return super().__str__().replace("'", '"')

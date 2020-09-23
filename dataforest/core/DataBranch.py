@@ -18,7 +18,7 @@ from dataforest.core.schema.ProcessSchema import ProcessSchema
 from dataforest.filesystem.io import ReaderMethods
 from dataforest.filesystem.io.WriterMethods import WriterMethods
 from dataforest.utils.exceptions import BadSubset, BadFilter
-from dataforest.utils.utils import update_recursive
+from dataforest.utils.utils import update_recursive, label_df_partitions
 
 
 class DataBranch(DataBase):
@@ -100,7 +100,7 @@ class DataBranch(DataBase):
     _METADATA_NAME: dict = NotImplementedError("Should be implemented by superclass")
     _COPY_KWARGS: dict = {
         "root": "root",
-        "branch_spec": "branch_spec",
+        "branch_spec": "spec",
         "verbose": "verbose",
         "current_process": "current_process",
     }
@@ -120,13 +120,11 @@ class DataBranch(DataBase):
         self._current_process = current_process
         self._remote_root = remote_root
         self.root = Path(root)
-
         self.spec = self._init_spec(branch_spec)
         self.verbose = verbose
         self.logger = logging.getLogger(self.__class__.__name__)
         self.plot = self.PLOT_METHODS(self)
         self.process = self.PROCESS_METHODS(self, self.spec)
-        # self.hyper = HyperparameterMethods(self)
         self.schema = self.SCHEMA_CLASS()
         self._paths_exists = PathCache(self.root, self.spec, exists_req=True)
         self._paths = self._paths_exists.get_shared_memory_view(exist_req=False)
@@ -394,6 +392,11 @@ class DataBranch(DataBase):
                 df = self._do_subset(df, column, val)
             for column, val in filter_.items():
                 df = self._do_filter(df, column, val)
+        df.replace(" ", "_", regex=True, inplace=True)
+        partitions_list = self.spec.get_partition_list(process_name)
+        partitions = set().union(*partitions_list)
+        if partitions:
+            df = label_df_partitions(df, partitions, encodings=True)
         return df
 
     @staticmethod

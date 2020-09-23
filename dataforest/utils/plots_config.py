@@ -1,23 +1,30 @@
 from copy import deepcopy
 import json
 from collections import OrderedDict
+from typing import Dict
 
 
-def parse_plot_methods(config: dict):
-    """Parse plot methods per process from plot_map"""
+def build_process_plot_method_lookup(config: dict) -> Dict[str, Dict[str, str]]:
+    """
+    Get a lookup of processes, each containing a mapping between plot method
+    names in the config and the actual callable names.
+    Format:
+        process_name[config_plot_name][plot_callable_name]
+    Ex:
+        {"normalize": {"_UMIS_PER_CELL_HIST_": "plot_umis_per_cell_hist", ...}, ...}
+    """
     plot_map = config["plot_map"]
-    plot_methods = {}
+    process_plot_methods = {}
     for process, plots in plot_map.items():
-        plot_methods[process] = {}
+        process_plot_methods[process] = {}
         for plot_name in plots.keys():
             try:
                 plot_method = plots[plot_name]["plot_method"]
             except (TypeError, KeyError):
                 plot_method = _get_plot_method_from_plot_name(plot_name)
 
-            plot_methods[process][plot_name] = plot_method
-
-    return plot_methods
+            process_plot_methods[process][plot_name] = plot_method
+    return process_plot_methods
 
 
 def parse_plot_kwargs(config: dict):
@@ -83,17 +90,7 @@ def parse_plot_map(config: dict):
                     plot_filename = _get_default_plot_filename(plot_name, plot_kwargs_set_mapped, plot_kwargs_defaults)
 
                 all_plot_maps[process][plot_name][_get_plot_kwargs_string(plot_kwargs_set)] = plot_filename
-
     return all_plot_maps
-
-
-def get_plot_name_from_plot_method(process_plot_methods, plot_method_name):
-    """Reverse search for plot name in the config from plot method used"""
-    for key, value in process_plot_methods.items():
-        if value == plot_method_name:
-            plot_name = key  # look up plot name from plot_method name
-
-    return plot_name
 
 
 def _get_plot_method_from_plot_name(plot_name):
@@ -115,14 +112,14 @@ def _unify_kwargs_opt_lens(plot_kwargs: dict, plot_kwargs_defaults: dict, plot_n
     Examples:
         >>> _unify_kwargs_opt_lens(
         >>>     {
-        >>>         "stratify": ["sample", "none"],
+        >>>         "stratify": ["sample_id", "none"],
         >>>         "plot_size": "default"
         >>>     },
         >>>     plot_kwargs_defaults, plot_name
         >>> )
         # output
         {
-            "stratify": ["sample", "none"],
+            "stratify": ["sample_id", "none"],
             "plot_size": ["default", "default"]
         }
     """

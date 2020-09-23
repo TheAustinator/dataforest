@@ -169,7 +169,7 @@ class ProcessRun:
         Prints stdout and stderr log files
         """
         log_dir = self.path / "_logs"
-        log_files = log_dir.iterdir()
+        log_files = list(log_dir.iterdir())
         stdouts = list(filter(lambda x: str(x).endswith(".out"), log_files))
         stderrs = list(filter(lambda x: str(x).endswith(".err"), log_files))
         if (len(stdouts) == 0) and (len(stderrs) == 0):

@@ -1,7 +1,8 @@
+from copy import deepcopy
 import gc
 import logging
 from pathlib import Path
-from copy import deepcopy
+import shutil
 
 import pandas as pd
 import yaml
@@ -9,7 +10,6 @@ import yaml
 from dataforest.hooks.dataprocess import dataprocess
 from dataforest.utils.catalogue import run_id_from_multi_row
 from dataforest.utils.exceptions import InputDataNotFound
-from dataforest.utils.plots_config import get_plot_name_from_plot_method
 from dataforest.hooks.hook import hook
 
 
@@ -23,7 +23,8 @@ def hook_comparative(dp):
     """Sets up DataBranch for comparative analysis"""
     if "_PARTITION_" in dp.branch.spec:
         logging.warning(
-            "`partition` found at base level of branch_spec. It should normally be specified under an individual processes"
+            "`partition` found at base level of branch_spec. It should normally be specified under an individual "
+            "processes"
         )
 
     if dp.comparative:
@@ -136,7 +137,7 @@ def hook_generate_plots(dp: dataprocess):
     for method in plot_sources.values():
         plot_method_name = method.__name__
         if plot_method_name in requested_plot_methods.values():
-            plot_name = get_plot_name_from_plot_method(process_plot_methods, plot_method_name)
+            plot_name = dp.branch.plot.global_plot_methods_reverse[plot_method_name]
             plot_kwargs_sets = all_plot_kwargs_sets[plot_name]
             for plot_kwargs_key in plot_kwargs_sets.keys():
                 plot_path = process_plot_map[plot_name][plot_kwargs_key]
@@ -149,3 +150,10 @@ def hook_generate_plots(dp: dataprocess):
         logging.warning(
             f"Requested plotting methods {requested_plot_methods} are not implemented so they were skipped."
         )
+
+
+@hook
+def hook_clear_logs(dp: dataprocess):
+    logs_path = dp.branch[dp.name].logs_path
+    if logs_path.exists():
+        shutil.rmtree(str(logs_path), ignore_errors=True)

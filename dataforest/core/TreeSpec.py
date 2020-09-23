@@ -28,7 +28,7 @@ class TreeSpec(BranchSpec):
     >>>             },
     >>>         ],
     >>>         "_SUBSET_": {
-    >>>             "sample": {"_SWEEP_": ["sample_1", "sample_2"]}
+    >>>             "sample_id": {"_SWEEP_": ["sample_1", "sample_2"]}
     >>>         },
     >>>     },
     >>>     {
