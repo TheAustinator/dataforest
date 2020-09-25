@@ -107,6 +107,7 @@ class ProcessRun:
 
     @property
     def plot_map(self) -> Dict[str, Path]:
+        # TODO: confusing with new plot_map name in config - rename that to plot_settings?
         if self._plot_map is None:
             self._plot_map = self._build_path_map(incl_current=True, plot_map=True)
         return self._plot_map
@@ -154,8 +155,10 @@ class ProcessRun:
     @property
     def failed(self) -> bool:
         if self.path is not None and self.path.exists():
-            error_files = ["process.err", "hooks.err"]
-            if not set(error_files).intersection(self.logs_path.iterdir()):
+            error_prefixes = ["PROCESS__", "HOOKS__"]
+            is_error_file = lambda s: any(map(lambda prefix: s.name.startswith(prefix), error_prefixes))
+            contains_error_file = any(map(is_error_file, self.logs_path.iterdir()))
+            if contains_error_file:
                 return True
         return False
 

@@ -271,7 +271,7 @@ class DataBranch(DataBase):
             )
             return
 
-        if plot_kwargs == None:
+        if plot_kwargs is None:
             plot_kwargs = self.plot.plot_kwargs["root"]
         root_plot_map = self["root"].plot_map
         root_plot_methods = self.plot.plot_methods.get("root", [])

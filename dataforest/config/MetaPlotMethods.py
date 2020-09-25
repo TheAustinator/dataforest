@@ -9,6 +9,10 @@ class MetaPlotMethods(MetaConfig):
         return {k: v for source in cls.CONFIG["plot_sources"] for k, v in collect_plots(source).items()}
 
     @property
+    def PLOT_MAP(cls):
+        return cls.CONFIG["plot_map"]
+
+    @property
     def PROCESS_PLOT_METHODS(cls):
         try:
             plot_methods = cls.CONFIG["plot_methods"]

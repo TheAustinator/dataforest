@@ -24,7 +24,7 @@ class Interface:
     ) -> Union["DataBranch", "CellBranch", "DataTree", "CellTree"]:
         # TODO: replace kwargs with explicit to make it easier for users
         """
-        Loads `cls.TREE_CLASS` if `tree_spec` passed, otherwise `cls.BRANCH_CLASS`
+        Loads `cls.TREE_CLASS` if `tree_spec` passed, otherwise `cls._BRANCH_CLASS`
         Args:
             root:
             branch_spec:

@@ -61,7 +61,7 @@ class dataprocess(metaclass=MetaDataProcess):
             try:
                 return func(self.branch, run_name, *args, **kwargs)
             except Exception as e:
-                ExceptionHandler.handle(branch, e, "process.err", stop_on_error)
+                ExceptionHandler.handle(branch, e, f"PROCESS_{func.__name__}.err", stop_on_error)
             finally:
                 self._run_hooks(self.clean_hooks, try_all=True, stop_on_hook_error=stop_on_hook_error)
 
@@ -83,7 +83,7 @@ class dataprocess(metaclass=MetaDataProcess):
                 hook_exceptions[str(hook.__name__)] = e
                 if not try_all:
                     e = HookException(self.name, hook_exceptions)
-                    ExceptionHandler.handle(self.branch, e, "hooks.err", stop_on_hook_error)
+                    ExceptionHandler.handle(self.branch, e, f"HOOK_{hook.__name__}.err", stop_on_hook_error)
         if hook_exceptions:
             e = HookException(self.name, hook_exceptions)
-            ExceptionHandler.handle(self.branch, e, "hooks.err", stop_on_hook_error)
+            ExceptionHandler.handle(self.branch, e, f"HOOK_{hook.__name__}.err", stop_on_hook_error)

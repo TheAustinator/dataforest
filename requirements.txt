@@ -1,6 +1,8 @@
+jobplib
 matplotlib
 numpy
 pandas
 pyyaml
 termcolor
+typeguard
 Ipython

@@ -2,6 +2,8 @@ import json
 from copy import deepcopy
 from typing import Union, List, Dict
 
+from typeguard import typechecked
+
 from dataforest.core.RunSpec import RunSpec
 from dataforest.utils.exceptions import DuplicateProcessName
 
@@ -63,6 +65,10 @@ class BranchSpec(list):
             incl_root=True, incl_current=True
         )
         self.process_order: List[str] = [spec_item.name for spec_item in self]
+
+    @property
+    def processes(self):
+        return [run_spec["_PROCESS_"] for run_spec in self]
 
     @property
     def shell_str(self):
@@ -194,18 +200,28 @@ class BranchSpec(list):
                 current_precursors = current_precursors + [spec_item.name]
         return precursors
 
-    def __getitem__(self, item: Union[str, int]) -> "RunSpec":
+    @typechecked
+    def __getitem__(self, key: Union[str, int, slice]) -> Union["RunSpec", "BranchSpec"]:
         """Get `RunSpec` either via `int` index or `name`"""
-        if not isinstance(item, int):
-            try:
-                return self._run_spec_lookup[item]
-            except Exception as e:
-                raise e
+        if isinstance(key, str):
+            return self._run_spec_lookup[key]
+        elif isinstance(key, slice):
+            if isinstance(key.stop, str):
+                if key.start or key.step:
+                    raise ValueError(f"Can only use stop with string slice (ex. [:'process_name'])")
+                precursors_lookup = self.get_precursors_lookup(incl_current=True)
+                import ipdb
+
+                ipdb.set_trace()
+                precursors = precursors_lookup[key.stop]
+                return self.__class__([self._run_spec_lookup[process] for process in precursors])
+            else:
+                return self.__class__(super().__getitem__(key))
         else:
-            return super().__getitem__(item)
+            return super().__getitem__(key)
 
     def __setitem__(self, k, v):
-        raise ValueError("Cannot set items dynamically. All items must be defined at init")
+        raise NotImplementedError("Cannot set items dynamically. All items must be defined at init")
 
     def __contains__(self, item):
         return item in self._run_spec_lookup
