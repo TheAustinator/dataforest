@@ -1,4 +1,5 @@
-jobplib
+ipywidgets
+joblib
 matplotlib
 numpy
 pandas

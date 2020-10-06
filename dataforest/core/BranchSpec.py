@@ -51,6 +51,8 @@ class BranchSpec(list):
             process_order:
     """
 
+    _RUN_SPEC_CLASS = RunSpec
+
     def __init__(self, spec: Union[str, List[dict], "BranchSpec[RunSpec]"]):
         if isinstance(spec, str):
             spec = json.loads(spec)
@@ -176,7 +178,7 @@ class BranchSpec(list):
 
     def _build_run_spec_lookup(self) -> Dict[str, "RunSpec"]:
         """See class definition"""
-        run_spec_lookup = {"root": RunSpec({})}
+        run_spec_lookup = {"root": self._RUN_SPEC_CLASS({})}
         for run_spec in self:
             process_name = run_spec.name
             if process_name in run_spec_lookup:
@@ -210,9 +212,6 @@ class BranchSpec(list):
                 if key.start or key.step:
                     raise ValueError(f"Can only use stop with string slice (ex. [:'process_name'])")
                 precursors_lookup = self.get_precursors_lookup(incl_current=True)
-                import ipdb
-
-                ipdb.set_trace()
                 precursors = precursors_lookup[key.stop]
                 return self.__class__([self._run_spec_lookup[process] for process in precursors])
             else:

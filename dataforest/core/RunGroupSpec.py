@@ -58,7 +58,8 @@ class RunGroupSpec(RunSpec):
             if isinstance(operation_dict, dict):
                 for key, val in operation_dict.items():
                     if isinstance(val, dict) and "_SWEEP_" in val:
-                        self.sweeps.add((self["_PROCESS_"], operation, key))
+                        sweep_info = (self["_PROCESS_"], operation, key, tuple(val["_SWEEP_"]))
+                        self.sweeps.add(sweep_info)
                         sweep_obj = val["_SWEEP_"]
                         self[operation][key] = Sweep(operation, key, sweep_obj)
 

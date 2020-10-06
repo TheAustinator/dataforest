@@ -1,9 +1,9 @@
 from collections import ChainMap
 import logging
+from pathlib import Path
 from typing import Dict, List, TYPE_CHECKING
 
 import pandas as pd
-from pathlib import Path
 from termcolor import cprint
 
 
@@ -18,7 +18,7 @@ class ProcessRun:
     """
 
     def __init__(self, branch: "DataBranch", process_name: str, process: str):
-        self.logger = logging.getLogger(f"ProcessRun - {process_name}")
+        self._LOG = logging.getLogger(f"ProcessRun - {process_name}")
         if process_name not in branch.spec and process_name != "root":
             raise ValueError(f'key "{process_name}" not in branch_spec: {branch.spec}')
         self.process_name = process_name
@@ -136,6 +136,10 @@ class ProcessRun:
 
     @property
     def done(self) -> bool:
+        """
+        Whether or not process has been executed to completion, regardless of
+        success
+        """
         if self.path.exists() and not (self.path / "INCOMPLETE").exists():
             if len(self.files) > 0 or self.logs_path.exists():
                 return True

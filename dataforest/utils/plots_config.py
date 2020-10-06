@@ -28,7 +28,7 @@ def build_process_plot_method_lookup(config: dict) -> Dict[str, Dict[str, str]]:
 
 
 def parse_plot_kwargs(config: dict):
-    """Parse plot methods kwargs per process from plot_map"""
+    """Parse plot methods plot_kwargs per process from plot_map"""
     plot_map = config["plot_map"]
     plot_kwargs_defaults = config["plot_kwargs_defaults"]
     all_plot_kwargs = {}
@@ -57,7 +57,7 @@ def parse_plot_kwargs(config: dict):
 def parse_plot_map(config: dict):
     """
     Parse plot file map per process from plot_map and ensures that
-    implicit definition returns a dictionary of default values for all kwargs
+    implicit definition returns a dictionary of default values for all plot_kwargs
     """
     plot_map = config["plot_map"]
     plot_kwargs_defaults = config["plot_kwargs_defaults"]
@@ -155,7 +155,7 @@ def _unify_kwargs_opt_lens(plot_kwargs: dict, plot_kwargs_defaults: dict, plot_n
 
 
 def _map_kwargs_opts_to_values(plot_kwargs, plot_kwargs_defaults):
-    """Map plot_kwargs to values defined in kwargs defaults if available"""
+    """Map plot_kwargs to values defined in plot_kwargs defaults if available"""
     mapped_plot_kwargs = deepcopy(plot_kwargs)
 
     for kwarg_name, kwarg_values in plot_kwargs.items():
@@ -178,7 +178,7 @@ def _get_plot_kwargs_feed(plot_kwargs: dict, plot_kwargs_defaults: dict, plot_na
         plot_kwargs = _map_kwargs_opts_to_values(plot_kwargs, plot_kwargs_defaults)
     plot_kwargs_feed = [
         dict(j) for j in zip(*[[(k, i) for i in v] for k, v in plot_kwargs.items()])
-    ]  # 1-1 mapping of kwargs options
+    ]  # 1-1 mapping of plot_kwargs options
 
     return plot_kwargs_feed
 

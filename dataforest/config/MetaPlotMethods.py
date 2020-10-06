@@ -26,7 +26,7 @@ class MetaPlotMethods(MetaConfig):
         return cls.CONFIG["plot_kwargs_defaults"]
 
     @property
-    def PLOT_KWARGS(cls):  # TODO-QC: mapping of process, plot to kwargs
+    def PLOT_KWARGS(cls):  # TODO-QC: mapping of process, plot to plot_kwargs
         plot_kwargs = parse_plot_kwargs(config=cls.CONFIG)
 
         return plot_kwargs

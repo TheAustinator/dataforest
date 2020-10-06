@@ -10,7 +10,6 @@ from dataforest.structures.cache.BranchCache import BranchCache
 
 class TreeProcessMethods:
     _N_JOBS = cpu_count() - 1
-    _LOG = logging.getLogger("TreeProcessMethods")
 
     def __init__(self, tree_spec: TreeSpec, branch_cache: BranchCache):
         self._tree_spec = tree_spec
@@ -86,18 +85,17 @@ class TreeProcessMethods:
 
             def _distributed_kernel_serial():
                 _ret_vals = []
-                for branch in unique_branches:
+                for branch in unique_branches.values():
                     _ret_vals.append(_single_kernel(branch))
                 return _ret_vals
 
             def _distributed_kernel_parallel():
                 process = delayed(_single_kernel)
                 pool = Parallel(n_jobs=self._N_JOBS)
-                return pool(process(branch) for branch in unique_branches)
+                return pool(process(branch) for branch in unique_branches.values())
 
             exec_scheme = "PARALLEL" if parallel else "SERIAL"
-            print(exec_scheme)
-            self._LOG.info(
+            logging.info(
                 f"{exec_scheme} execution of {method_name} over {self._N_JOBS} workers on {len(unique_branches)} "
                 f"unique conditions"
             )
