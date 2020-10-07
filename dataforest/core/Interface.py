@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Optional, Iterable, List
+from typing import Union, Optional, Iterable, List, AnyStr
 
 import pandas as pd
 
@@ -24,7 +24,7 @@ class Interface:
     ) -> Union["DataBranch", "CellBranch", "DataTree", "CellTree"]:
         # TODO: replace kwargs with explicit to make it easier for users
         """
-        Loads `cls.TREE_CLASS` if `tree_spec` passed, otherwise `cls.BRANCH_CLASS`
+        Loads `cls.TREE_CLASS` if `tree_spec` passed, otherwise `cls._BRANCH_CLASS`
         Args:
             root:
             branch_spec:
@@ -46,21 +46,27 @@ class Interface:
         }
         kwargs = cls._prune_kwargs(kwargs)
         interface_cls = cls._get_interface_class(kwargs)
-        return interface_cls(root, **kwargs)
+        inst = interface_cls(root, **kwargs)
+        if not inst.root_built:
+            raise ValueError(
+                "Root must be built once before it can be loaded. Use `from_input_dirs` or `from_sample_metadata`"
+            )
+        return inst
 
     @classmethod
     def from_input_dirs(
         cls,
-        root: Union[str, Path],
-        input_paths: Optional[Union[str, Path, Iterable[Union[str, Path]]]] = None,
+        root: AnyStr,
+        input_paths: Optional[Union[AnyStr, Iterable[AnyStr]]] = None,
         mode: Optional[str] = None,
         branch_spec: Optional[List[dict]] = None,
         tree_spec: Optional[List[dict]] = None,
         verbose: bool = False,
         current_process: Optional[str] = None,
-        remote_root: Optional[Union[str, Path]] = None,
+        remote_root: Optional[AnyStr] = None,
         root_plots: bool = True,
         plot_kwargs: Optional[dict] = None,
+        overwrite_plots: Optional[Iterable[str]] = None,
         **kwargs,
     ) -> Union["DataBranch", "CellBranch", "DataTree", "CellTree"]:
         """
@@ -79,6 +85,8 @@ class Interface:
             remote_root:
             root_plots:
             plot_kwargs:
+            overwrite_plots: e.g. ["root", "cluster"]
+            # TODO implement overwrite plots
         """
         if not isinstance(input_paths, (list, tuple)):
             input_paths = [input_paths]

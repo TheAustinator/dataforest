@@ -1,6 +1,9 @@
+ipywidgets
+joblib
 matplotlib
 numpy
 pandas
 pyyaml
 termcolor
+typeguard
 Ipython

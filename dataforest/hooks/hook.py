@@ -1,4 +1,4 @@
-from functools import partial, update_wrapper, wraps
+from functools import update_wrapper, wraps
 from typing import Callable, Optional, List, Tuple, Union
 
 

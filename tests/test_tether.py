@@ -6,7 +6,7 @@ class TetherTester:
         self.val = val
 
     @staticmethod
-    def my_method(val):
+    def my_method(val, _):
         return val + 5
 
 

@@ -1,27 +1,34 @@
 from copy import deepcopy
 import json
 from collections import OrderedDict
+from typing import Dict
 
 
-def parse_plot_methods(config: dict):
-    """Parse plot methods per process from plot_map"""
+def build_process_plot_method_lookup(config: dict) -> Dict[str, Dict[str, str]]:
+    """
+    Get a lookup of processes, each containing a mapping between plot method
+    names in the config and the actual callable names.
+    Format:
+        process_name[config_plot_name][plot_callable_name]
+    Ex:
+        {"normalize": {"_UMIS_PER_CELL_HIST_": "plot_umis_per_cell_hist", ...}, ...}
+    """
     plot_map = config["plot_map"]
-    plot_methods = {}
+    process_plot_methods = {}
     for process, plots in plot_map.items():
-        plot_methods[process] = {}
+        process_plot_methods[process] = {}
         for plot_name in plots.keys():
             try:
                 plot_method = plots[plot_name]["plot_method"]
             except (TypeError, KeyError):
                 plot_method = _get_plot_method_from_plot_name(plot_name)
 
-            plot_methods[process][plot_name] = plot_method
-
-    return plot_methods
+            process_plot_methods[process][plot_name] = plot_method
+    return process_plot_methods
 
 
 def parse_plot_kwargs(config: dict):
-    """Parse plot methods kwargs per process from plot_map"""
+    """Parse plot methods plot_kwargs per process from plot_map"""
     plot_map = config["plot_map"]
     plot_kwargs_defaults = config["plot_kwargs_defaults"]
     all_plot_kwargs = {}
@@ -50,7 +57,7 @@ def parse_plot_kwargs(config: dict):
 def parse_plot_map(config: dict):
     """
     Parse plot file map per process from plot_map and ensures that
-    implicit definition returns a dictionary of default values for all kwargs
+    implicit definition returns a dictionary of default values for all plot_kwargs
     """
     plot_map = config["plot_map"]
     plot_kwargs_defaults = config["plot_kwargs_defaults"]
@@ -83,17 +90,7 @@ def parse_plot_map(config: dict):
                     plot_filename = _get_default_plot_filename(plot_name, plot_kwargs_set_mapped, plot_kwargs_defaults)
 
                 all_plot_maps[process][plot_name][_get_plot_kwargs_string(plot_kwargs_set)] = plot_filename
-
     return all_plot_maps
-
-
-def get_plot_name_from_plot_method(process_plot_methods, plot_method_name):
-    """Reverse search for plot name in the config from plot method used"""
-    for key, value in process_plot_methods.items():
-        if value == plot_method_name:
-            plot_name = key  # look up plot name from plot_method name
-
-    return plot_name
 
 
 def _get_plot_method_from_plot_name(plot_name):
@@ -115,14 +112,14 @@ def _unify_kwargs_opt_lens(plot_kwargs: dict, plot_kwargs_defaults: dict, plot_n
     Examples:
         >>> _unify_kwargs_opt_lens(
         >>>     {
-        >>>         "stratify": ["sample", "none"],
+        >>>         "stratify": ["sample_id", "none"],
         >>>         "plot_size": "default"
         >>>     },
         >>>     plot_kwargs_defaults, plot_name
         >>> )
         # output
         {
-            "stratify": ["sample", "none"],
+            "stratify": ["sample_id", "none"],
             "plot_size": ["default", "default"]
         }
     """
@@ -158,7 +155,7 @@ def _unify_kwargs_opt_lens(plot_kwargs: dict, plot_kwargs_defaults: dict, plot_n
 
 
 def _map_kwargs_opts_to_values(plot_kwargs, plot_kwargs_defaults):
-    """Map plot_kwargs to values defined in kwargs defaults if available"""
+    """Map plot_kwargs to values defined in plot_kwargs defaults if available"""
     mapped_plot_kwargs = deepcopy(plot_kwargs)
 
     for kwarg_name, kwarg_values in plot_kwargs.items():
@@ -181,7 +178,7 @@ def _get_plot_kwargs_feed(plot_kwargs: dict, plot_kwargs_defaults: dict, plot_na
         plot_kwargs = _map_kwargs_opts_to_values(plot_kwargs, plot_kwargs_defaults)
     plot_kwargs_feed = [
         dict(j) for j in zip(*[[(k, i) for i in v] for k, v in plot_kwargs.items()])
-    ]  # 1-1 mapping of kwargs options
+    ]  # 1-1 mapping of plot_kwargs options
 
     return plot_kwargs_feed
 
