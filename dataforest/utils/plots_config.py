@@ -54,13 +54,11 @@ def parse_plot_kwargs(config: dict):
     return all_plot_kwargs
 
 
-def parse_plot_map(config: dict):
+def parse_plot_map(plot_map: dict, plot_kwargs_defaults: dict):
     """
     Parse plot file map per process from plot_map and ensures that
     implicit definition returns a dictionary of default values for all plot_kwargs
     """
-    plot_map = config["plot_map"]
-    plot_kwargs_defaults = config["plot_kwargs_defaults"]
     all_plot_maps = {}
     for process, plots in plot_map.items():
         all_plot_maps[process] = {}

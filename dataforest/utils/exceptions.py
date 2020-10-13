@@ -47,13 +47,12 @@ class UnnecessaryKeysError(KeyError):
 class BadOperation(KeyError):
     OPERATION = None
 
-    def __init__(self, column, val):
-        self._column = column
-        self._val = val
+    def __init__(self, dict_):
+        self._dict = dict_
 
     def __str__(self):
         return (
-            f"{self.OPERATION} resulted in no rows - column: {self._column} val: {self._val}. Please note that any "
+            f"{self.OPERATION} resulted in no rows - {self._dict}. Please note that any "
             f"spaces in `spec` should be converted to underscores!"
         )
 

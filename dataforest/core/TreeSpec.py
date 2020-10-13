@@ -1,5 +1,5 @@
 from itertools import product
-from typing import Union, List, Dict, Any
+from typing import Union, List, Dict, TYPE_CHECKING
 
 from dataforest.core.BranchSpec import BranchSpec
 from dataforest.core.RunGroupSpec import RunGroupSpec
@@ -53,9 +53,8 @@ class TreeSpec(BranchSpec):
         self.branch_specs = self._build_branch_specs()
         self.sweep_dict = {x["_PROCESS_"]: x.sweeps for x in self}
         self.sweep_dict["root"] = set()
-        self._run_spec_lookup: Dict[str, "RunGroupSpec"] = self._build_run_spec_lookup()
         self._raw = tree_spec
-        self._run_spec_lookup: Dict[str, "RunSpec"] = self._build_run_spec_lookup()
+        self._run_spec_lookup: Dict[str, "RunGroupSpec"] = self._build_run_spec_lookup()
         self._precursors_lookup: Dict[str, List[str]] = self._build_precursors_lookup()
         self._precursors_lookup_incl_curr: Dict[str, List[str]] = self._build_precursors_lookup(incl_current=True)
         self._precursors_lookup_incl_root: Dict[str, List[str]] = self._build_precursors_lookup(incl_root=True)

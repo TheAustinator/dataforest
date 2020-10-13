@@ -26,6 +26,7 @@ class PlotWidget:
         process = self._tree.current_process
         precursors = self._tree.tree_spec.get_precursors_lookup(incl_current=True)[process]
         sweeps = set.union(*[self._sweeps[precursor] for precursor in precursors])
+        # {"key:operation:process": value, ...} (e.g. {"num_pcs:_PARAMS_:normalize": 30, ...})
         param_sweeps = {":".join(swp[:3][::-1]): list(swp[3]) for swp in sweeps}
         _kwargs = {**param_sweeps, **self._plot_kwargs}
 

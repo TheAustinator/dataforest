@@ -21,7 +21,9 @@ class MetaProcessSchema(MetaConfig):
 
     @property
     def PLOT_MAP(cls):  # TODO-QC: process plot map starting here? Make it into a class where you can fetch plot_kwargs?
-        return parse_plot_map(cls.CONFIG)
+        plot_map = cls.CONFIG.get("plot_map", dict())
+        plot_kwargs_defaults = cls.CONFIG.get("plot_kwargs_defaults", dict())
+        return parse_plot_map(plot_map, plot_kwargs_defaults)
 
     @property
     def LAYERS(cls):

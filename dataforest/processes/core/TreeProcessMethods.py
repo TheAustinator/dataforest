@@ -1,5 +1,4 @@
 import logging
-from multiprocessing import cpu_count
 from typing import Callable, List, Union
 
 from joblib import Parallel, delayed
@@ -9,7 +8,7 @@ from dataforest.structures.cache.BranchCache import BranchCache
 
 
 class TreeProcessMethods:
-    _N_JOBS = cpu_count() - 1
+    _N_CPUS_EXCLUDED = 1
 
     def __init__(self, tree_spec: TreeSpec, branch_cache: BranchCache):
         self._tree_spec = tree_spec
@@ -91,7 +90,7 @@ class TreeProcessMethods:
 
             def _distributed_kernel_parallel():
                 process = delayed(_single_kernel)
-                pool = Parallel(n_jobs=self._N_JOBS)
+                pool = Parallel(n_jobs=-1 - self._N_CPUS_EXCLUDED)
                 return pool(process(branch) for branch in unique_branches.values())
 
             exec_scheme = "PARALLEL" if parallel else "SERIAL"

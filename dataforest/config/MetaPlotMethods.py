@@ -1,5 +1,9 @@
+from pathlib import Path
+from typing import List
+
 from dataforest.config.MetaConfig import MetaConfig
 from dataforest.utils.loaders.collectors import collect_plots
+from dataforest.utils.loaders.path import get_module_paths
 from dataforest.utils.plots_config import build_process_plot_method_lookup, parse_plot_kwargs
 
 
@@ -28,5 +32,12 @@ class MetaPlotMethods(MetaConfig):
     @property
     def PLOT_KWARGS(cls):  # TODO-QC: mapping of process, plot to plot_kwargs
         plot_kwargs = parse_plot_kwargs(config=cls.CONFIG)
-
         return plot_kwargs
+
+    # @property
+    # def R_FUNCTIONS_FILEPATH(cls) -> Path:
+    #     return get_module_paths([cls.CONFIG["r_functions_sources"]])[0]
+
+    @property
+    def R_PLOT_SOURCES(cls) -> List[Path]:
+        return get_module_paths(cls.CONFIG["r_plot_sources"])

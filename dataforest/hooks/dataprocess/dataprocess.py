@@ -18,7 +18,7 @@ class dataprocess(metaclass=MetaDataProcess):
     ✓ checks to ensure that specified input data is present
     - may make new tables and update them in the future
 
-    kwargs can be used to pass custom attributes
+    plot_kwargs can be used to pass custom attributes
     """
 
     def __init__(

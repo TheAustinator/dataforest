@@ -3,6 +3,8 @@ import importlib.util
 from pathlib import Path
 from typing import Optional, Callable
 
+_PLOT_EXCLUDE_NAMES = ["plot_py", "plot_r"]
+
 
 def collect_hooks(path):
     return _collector(path, "hooks.py", _function_filter_hook)
@@ -63,9 +65,8 @@ def _function_filter_hook(func):
 
 
 def _function_filter_plot(func):
-    if hasattr(func, "__name__"):
-        return func.__name__.startswith("plot_")
-    # otherwise is just a variable
+    name = getattr(func, "__name__", "")
+    return name.startswith("plot_") and name not in _PLOT_EXCLUDE_NAMES
 
 
 def _function_filter_process(func):
