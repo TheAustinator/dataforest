@@ -17,9 +17,6 @@ _DEFAULT_BIG_PLOT_RESOLUTION_PX = (1000, 1000)  # width, height in pixels
 _PLOT_FILE_EXT = ".png"
 
 
-_NONE_VARIANTS = [None, "none", "None", "NULL", "NA"]
-
-
 def plot_py(plot_func):
     @wraps(plot_func)
     def wrapper(
@@ -31,12 +28,14 @@ def plot_py(plot_func):
         **kwargs,
     ) -> Union[plt.Figure, Tuple[plt.Figure, np.ndarray]]:
         prep = PlotPreparator(branch)
-        if facet not in _NONE_VARIANTS:
+        stratify = None if stratify in prep.NONE_VARIANTS else stratify
+        facet = None if facet in prep.NONE_VARIANTS else facet
+        if facet is not None:
             kwargs["ax"] = prep.facet(facet, *facet_dim)
+        if stratify is not None:
+            prep.stratify(stratify, kwargs)
         if plot_path is not None:
             matplotlib.use("Agg")  # don't plot on screen
-        if stratify not in _NONE_VARIANTS:
-            prep.stratify(stratify, kwargs)
         prep.prepare(kwargs)
         facet_inds = list(product(*map(range, prep.ax_arr.shape)))
         for _, row in prep.branch_df.iterrows():
@@ -47,12 +46,7 @@ def plot_py(plot_func):
                 ax = prep.ax_arr[ax_i]
                 ax.set_title(row["facet"])
             if stratify is not None:
-                try:
-                    kwargs["label"] = row["stratify"]
-                except:
-                    import ipdb
-
-                    ipdb.set_trace()
+                kwargs["label"] = row["stratify"]
             plot_func(row["branch"], ax=ax, **kwargs)
         if plot_path is not None:
             logging.info(f"saving py figure to {plot_path}")
@@ -77,20 +71,22 @@ def plot_r(plot_func):
                 if _r_script.exists():
                     return _plot_source, _r_script
 
+        stratify = None if stratify in PlotPreparator.NONE_VARIANTS else stratify
+        facet = None if facet in PlotPreparator.NONE_VARIANTS else facet
         if facet is not None:
             logging.warning("facet not yet implemented for R plots, but will create separate plots")
         if stratify is not None:
             logging.warning("stratify not yet supported for R plots")
         plot_source, r_script = _get_plot_script()
         plot_size = kwargs.pop("plot_size", PlotPreparator.DEFAULT_PLOT_RESOLUTION_PX)
-        if stratify not in _NONE_VARIANTS:
+        if stratify is not None:
             if stratify in branch.meta:  # col exists in metadata
                 kwargs["group.by"] = stratify
             else:
                 logging.warning(f"{plot_func.__name__} with key '{stratify}' is skipped because key is not in metadata")
                 return
         subset_vals = [None]
-        if facet not in _NONE_VARIANTS:
+        if facet is not None:
             subset_vals = sorted(branch.meta[facet].unique())
         img_arr = []
 

@@ -10,6 +10,7 @@ from dataforest.core.DataBranch import DataBranch
 
 class PlotPreparator:
     DEFAULT_PLOT_RESOLUTION_PX = (500, 500)  # width, height in pixels
+    NONE_VARIANTS = [None, "none", "None", "NULL", "NA"]
     _DEFAULT_N_COLS = 3
 
     def __init__(self, branch: "DataBranch"):
