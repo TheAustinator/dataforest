@@ -20,7 +20,7 @@ class MetaProcessSchema(MetaConfig):
         return cls["file_map"]
 
     @property
-    def PLOT_MAP(cls):  # TODO-QC: process plot map starting here? Make it into a class where you can fetch kwargs?
+    def PLOT_MAP(cls):  # TODO-QC: process plot map starting here? Make it into a class where you can fetch plot_kwargs?
         return parse_plot_map(cls.CONFIG)
 
     @property

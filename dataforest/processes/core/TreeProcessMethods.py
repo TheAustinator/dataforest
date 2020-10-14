@@ -1,10 +1,16 @@
+import logging
+from multiprocessing import cpu_count
 from typing import Callable, List, Union
+
+from joblib import Parallel, delayed
 
 from dataforest.core.TreeSpec import TreeSpec
 from dataforest.structures.cache.BranchCache import BranchCache
 
 
 class TreeProcessMethods:
+    _N_JOBS = cpu_count() - 1
+
     def __init__(self, tree_spec: TreeSpec, branch_cache: BranchCache):
         self._tree_spec = tree_spec
         self._branch_cache = branch_cache
@@ -36,11 +42,13 @@ class TreeProcessMethods:
                 branches
         """
 
-        def distributed_method(
+        def _distributed_method(
             *args,
             stop_on_error: bool = False,
             stop_on_hook_error: bool = False,
             clear_data: Union[bool, List[str]] = True,
+            force_rerun: bool = False,
+            parallel: bool = False,
             **kwargs,
         ):
             """
@@ -53,26 +61,50 @@ class TreeProcessMethods:
                     after process execution to save memory. If boolean, whether
                     or not to clear all data attrs, if list, names of data
                     attrs to clear
+                force_rerun: force the process to rerun even if already done
+                parallel: whether or not to parallelize
                 **kwargs:
 
             Returns:
 
             """
+            kwargs = {"stop_on_error": stop_on_error, "stop_on_hook_error": stop_on_hook_error, **kwargs}
             if not self._branch_cache.fully_loaded:
                 self._branch_cache.load_all()
-            return_vals = []
-            for branch in list(self._branch_cache.values()):
+            all_branches = list(self._branch_cache.values())
+            unique_branches = {str(branch.spec[:method_name]): branch for branch in all_branches}
+
+            def _single_kernel(branch):
                 branch_method = getattr(branch.process, method_name)
-                if not branch[method_name].done:
-                    return_vals.append(
-                        branch_method(
-                            *args, stop_on_error=stop_on_error, stop_on_hook_error=stop_on_hook_error, **kwargs
-                        )
-                    )
+                if not branch[method_name].done or force_rerun:
+                    ret = branch_method(*args, **kwargs)
                     if clear_data:
                         clear_kwargs = {"all_data": True} if isinstance(clear_data, bool) else {"attrs": clear_data}
                         branch.clear_data(**clear_kwargs)
-            return return_vals
+                    return ret
 
-        distributed_method.__name__ = method_name
-        return distributed_method
+            def _distributed_kernel_serial():
+                _ret_vals = []
+                for branch in unique_branches.values():
+                    _ret_vals.append(_single_kernel(branch))
+                return _ret_vals
+
+            def _distributed_kernel_parallel():
+                process = delayed(_single_kernel)
+                pool = Parallel(n_jobs=self._N_JOBS)
+                return pool(process(branch) for branch in unique_branches.values())
+
+            exec_scheme = "PARALLEL" if parallel else "SERIAL"
+            logging.info(
+                f"{exec_scheme} execution of {method_name} over {self._N_JOBS} workers on {len(unique_branches)} "
+                f"unique conditions"
+            )
+            kernel = _distributed_kernel_parallel if parallel else _distributed_kernel_serial
+            ret_vals = kernel()
+            return ret_vals
+
+        _distributed_method.__name__ = method_name
+        return _distributed_method
+
+    def _distributed_kernel_parallel(self):
+        raise NotImplementedError()

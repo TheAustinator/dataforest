@@ -7,6 +7,10 @@ class Sweep(list):
         self.key = key
         super().__init__(self._get_values(sweep_obj))
 
+    @property
+    def dtype(self):
+        return type(self[0])
+
     @staticmethod
     def _get_values(sweep_obj):
         if isinstance(sweep_obj, dict):
@@ -27,7 +31,7 @@ class Sweep(list):
         elif isinstance(sweep_obj, (list, set, tuple)):
             values = list(sweep_obj)
         else:
-            raise TypeError(f"`sweep_obj` must be of types: [dict, list, set, tuple]")
+            raise TypeError(f"`sweep_obj` expected type: [dict, list, set, tuple], not {type(sweep_obj)}. {sweep_obj}")
         return values
 
     def __str__(self):

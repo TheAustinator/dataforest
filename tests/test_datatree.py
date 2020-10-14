@@ -29,7 +29,7 @@ def tree_spec():
                 },
                 {"min_genes": 5, "max_genes": 5000, "min_cells": 5, "perc_mito_cutoff": 20, "method": "sctransform"},
             ],
-            "_SUBSET_": {"sample": {"_SWEEP_": ["sample_1", "sample_2"]}},
+            "_SUBSET_": {"sample_id": {"_SWEEP_": ["sample_1", "sample_2"]}},
         },
         {
             "_PROCESS_": "reduce",

@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import List, Union
 
@@ -7,6 +8,8 @@ from dataforest.structures.cache.HashCash import HashCash
 
 
 class BranchCache(HashCash):
+    _LOG = logging.getLogger("BranchCache")
+
     def __init__(self, root: Union[str, Path], branch_specs: List[BranchSpec], branch_class: type, *args):
         super().__init__()
         self._root = root
@@ -16,9 +19,11 @@ class BranchCache(HashCash):
         self.fully_loaded = False
 
     def load_all(self):
-        for spec_str in self._branch_spec_lookup:
-            _ = self[spec_str]  # force load of all items
-        self.fully_loaded = True
+        self._LOG.info(f"loading all branches to `goto_process`")
+        if not self.fully_loaded:
+            for spec_str in self._branch_spec_lookup:
+                _ = self[spec_str]  # force load of all items
+            self.fully_loaded = True
 
     def update_branch_specs(self, branch_specs: List[BranchSpec]):
         self._branch_spec_lookup = {str(spec): spec for spec in branch_specs}

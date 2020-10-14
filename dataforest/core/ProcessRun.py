@@ -1,9 +1,9 @@
 from collections import ChainMap
 import logging
+from pathlib import Path
 from typing import Dict, List, TYPE_CHECKING
 
 import pandas as pd
-from pathlib import Path
 from termcolor import cprint
 
 
@@ -18,7 +18,7 @@ class ProcessRun:
     """
 
     def __init__(self, branch: "DataBranch", process_name: str, process: str):
-        self.logger = logging.getLogger(f"ProcessRun - {process_name}")
+        self._LOG = logging.getLogger(f"ProcessRun - {process_name}")
         if process_name not in branch.spec and process_name != "root":
             raise ValueError(f'key "{process_name}" not in branch_spec: {branch.spec}')
         self.process_name = process_name
@@ -107,6 +107,7 @@ class ProcessRun:
 
     @property
     def plot_map(self) -> Dict[str, Path]:
+        # TODO: confusing with new plot_map name in config - rename that to plot_settings?
         if self._plot_map is None:
             self._plot_map = self._build_path_map(incl_current=True, plot_map=True)
         return self._plot_map
@@ -135,6 +136,10 @@ class ProcessRun:
 
     @property
     def done(self) -> bool:
+        """
+        Whether or not process has been executed to completion, regardless of
+        success
+        """
         if self.path.exists() and not (self.path / "INCOMPLETE").exists():
             if len(self.files) > 0 or self.logs_path.exists():
                 return True
@@ -154,8 +159,10 @@ class ProcessRun:
     @property
     def failed(self) -> bool:
         if self.path is not None and self.path.exists():
-            error_files = ["process.err", "hooks.err"]
-            if not set(error_files).intersection(self.logs_path.iterdir()):
+            error_prefixes = ["PROCESS__", "HOOKS__"]
+            is_error_file = lambda s: any(map(lambda prefix: s.name.startswith(prefix), error_prefixes))
+            contains_error_file = any(map(is_error_file, self.logs_path.iterdir()))
+            if contains_error_file:
                 return True
         return False
 
@@ -169,7 +176,7 @@ class ProcessRun:
         Prints stdout and stderr log files
         """
         log_dir = self.path / "_logs"
-        log_files = log_dir.iterdir()
+        log_files = list(log_dir.iterdir())
         stdouts = list(filter(lambda x: str(x).endswith(".out"), log_files))
         stderrs = list(filter(lambda x: str(x).endswith(".err"), log_files))
         if (len(stdouts) == 0) and (len(stderrs) == 0):

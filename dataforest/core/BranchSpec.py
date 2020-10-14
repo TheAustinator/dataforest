@@ -2,6 +2,8 @@ import json
 from copy import deepcopy
 from typing import Union, List, Dict
 
+from typeguard import typechecked
+
 from dataforest.core.RunSpec import RunSpec
 from dataforest.utils.exceptions import DuplicateProcessName
 
@@ -19,41 +21,21 @@ class BranchSpec(list):
         >>> # NOTE: conceptual illustration only, not real processes
         >>> branch_spec = [
         >>>     {
-        >>>         "_PROCESS_": "normalize",
-        >>>         "_PARAMS_": {
-        >>>             "min_genes": 5,
-        >>>             "max_genes": 5000,
-        >>>             "min_cells": 5,
-        >>>             "nfeatures": 30,
-        >>>             "perc_mito_cutoff": 20,
-        >>>             "method": "seurat_default",
-        >>>         }
-        >>>         "_SUBSET_": {
-        >>>             "indication": {"disease_1", "disease_3"},
-        >>>             "collection_center": "mass_general",
-        >>>         },
-        >>>         "_FILTER_": {
-        >>>             "donor": "D115"
-        >>>         }
-        >>>     },
-        >>>     {
         >>>         "_PROCESS_": "reduce",    # dimensionality reduction
         >>>         "_ALIAS_": "linear_dim_reduce",
         >>>         "_PARAMS_": {
         >>>             "algorithm": "pca",
-        >>>             "pca_npcs": 30,
+        >>>             "n_pcs": 30
         >>>         }
         >>>     },
         >>>     {
         >>>         "_PROCESS_": "reduce",
         >>>         "_ALIAS_": "nonlinear_dim_reduce",
-        >>>         "_PARAMS_": {
-        >>>             "algorithm": "umap",
-        >>>             "n_neighbors": 15,
-        >>>             "min_dist": 0.1,
-        >>>             "n_components": 2,
-        >>>             "metric": "euclidean"
-        >>>         }
+        >>>         "_PARAMS_": ...
+        >>>     },
+        >>>     {
+        >>>         "_PROCESS_": "dispersity"
+        >>>         "_PARAMS_": ...
         >>>     }
         >>> ]
         >>> branch_spec = BranchSpec(branch_spec)
@@ -69,6 +51,8 @@ class BranchSpec(list):
             process_order:
     """
 
+    _RUN_SPEC_CLASS = RunSpec
+
     def __init__(self, spec: Union[str, List[dict], "BranchSpec[RunSpec]"]):
         if isinstance(spec, str):
             spec = json.loads(spec)
@@ -83,6 +67,10 @@ class BranchSpec(list):
             incl_root=True, incl_current=True
         )
         self.process_order: List[str] = [spec_item.name for spec_item in self]
+
+    @property
+    def processes(self):
+        return [run_spec["_PROCESS_"] for run_spec in self]
 
     @property
     def shell_str(self):
@@ -190,7 +178,7 @@ class BranchSpec(list):
 
     def _build_run_spec_lookup(self) -> Dict[str, "RunSpec"]:
         """See class definition"""
-        run_spec_lookup = {"root": RunSpec({})}
+        run_spec_lookup = {"root": self._RUN_SPEC_CLASS({})}
         for run_spec in self:
             try:
                 process_name = run_spec.name
@@ -217,18 +205,25 @@ class BranchSpec(list):
                 current_precursors = current_precursors + [spec_item.name]
         return precursors
 
-    def __getitem__(self, item: Union[str, int]) -> "RunSpec":
+    @typechecked
+    def __getitem__(self, key: Union[str, int, slice]) -> Union["RunSpec", "BranchSpec"]:
         """Get `RunSpec` either via `int` index or `name`"""
-        if not isinstance(item, int):
-            try:
-                return self._run_spec_lookup[item]
-            except Exception as e:
-                raise e
+        if isinstance(key, str):
+            return self._run_spec_lookup[key]
+        elif isinstance(key, slice):
+            if isinstance(key.stop, str):
+                if key.start or key.step:
+                    raise ValueError(f"Can only use stop with string slice (ex. [:'process_name'])")
+                precursors_lookup = self.get_precursors_lookup(incl_current=True)
+                precursors = precursors_lookup[key.stop]
+                return self.__class__([self._run_spec_lookup[process] for process in precursors])
+            else:
+                return self.__class__(super().__getitem__(key))
         else:
-            return super().__getitem__(item)
+            return super().__getitem__(key)
 
     def __setitem__(self, k, v):
-        raise ValueError("Cannot set items dynamically. All items must be defined at init")
+        raise NotImplementedError("Cannot set items dynamically. All items must be defined at init")
 
     def __contains__(self, item):
         return item in self._run_spec_lookup

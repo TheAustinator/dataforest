@@ -62,7 +62,7 @@ class DataBranch(DataBase):
             {reader, writer} from `{READER, WRITER}_METHODS` which was selected
             by `_map_default_{reader, writer}_methods` is not appropriate. Keys
             are `file_alias`es, and values are methods which take `filename`s
-            and `kwargs`.
+            and `plot_kwargs`.
 
         {READER, WRITER}_KWARGS_MAP: optional overloads for any file for which
             the default keyword arguments to the {reader, writer} should be
@@ -100,7 +100,7 @@ class DataBranch(DataBase):
     _METADATA_NAME: dict = NotImplementedError("Should be implemented by superclass")
     _COPY_KWARGS: dict = {
         "root": "root",
-        "branch_spec": "branch_spec",
+        "branch_spec": "spec",
         "verbose": "verbose",
         "current_process": "current_process",
     }
@@ -271,7 +271,7 @@ class DataBranch(DataBase):
             )
             return
 
-        if plot_kwargs == None:
+        if plot_kwargs is None:
             plot_kwargs = self.plot.plot_kwargs["root"]
         root_plot_map = self["root"].plot_map
         root_plot_methods = self.plot.plot_methods.get("root", [])
@@ -345,8 +345,7 @@ class DataBranch(DataBase):
 
     def __getitem__(self, process_name: str) -> ProcessRun:
         if process_name not in self._process_runs:
-            if process_name in ("root", None):
-                process_name = "root"
+            process_name = "root" if process_name is None else process_name
             process = self.spec[process_name].process if process_name != "root" else "root"
             self._process_runs[process_name] = ProcessRun(self, process_name, process)
         return self._process_runs[process_name]
@@ -389,9 +388,11 @@ class DataBranch(DataBase):
             df = self.meta.copy()
         for (subset, filter_) in zip(subset_list, filter_list):
             for column, val in subset.items():
-                df = self._do_subset(df, column, val)
+                if val is not None:
+                    df = self._do_subset(df, column, val)
             for column, val in filter_.items():
-                df = self._do_filter(df, column, val)
+                if val is not None:
+                    df = self._do_filter(df, column, val)
         df.replace(" ", "_", regex=True, inplace=True)
         partitions_list = self.spec.get_partition_list(process_name)
         partitions = set().union(*partitions_list)
@@ -428,7 +429,7 @@ class DataBranch(DataBase):
     def _map_file_io(self) -> Tuple[Dict[str, IOCache], Dict[str, IOCache]]:
         """
         Builds a lookup of lazy loading caches for file readers and writers,
-        which have implicit access to paths, methods, and kwargs for each file.
+        which have implicit access to paths, methods, and plot_kwargs for each file.
         Returns:
             {reader, writer}_map:
                 Key: file_alias (e.g. "rna")
