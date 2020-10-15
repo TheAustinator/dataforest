@@ -4,7 +4,7 @@ from collections import OrderedDict
 from typing import Dict
 
 
-def build_process_plot_method_lookup(config: dict) -> Dict[str, Dict[str, str]]:
+def build_process_plot_method_lookup(plot_map: dict) -> Dict[str, Dict[str, str]]:
     """
     Get a lookup of processes, each containing a mapping between plot method
     names in the config and the actual callable names.
@@ -13,7 +13,6 @@ def build_process_plot_method_lookup(config: dict) -> Dict[str, Dict[str, str]]:
     Ex:
         {"normalize": {"_UMIS_PER_CELL_HIST_": "plot_umis_per_cell_hist", ...}, ...}
     """
-    plot_map = config["plot_map"]
     process_plot_methods = {}
     for process, plots in plot_map.items():
         process_plot_methods[process] = {}
@@ -27,10 +26,8 @@ def build_process_plot_method_lookup(config: dict) -> Dict[str, Dict[str, str]]:
     return process_plot_methods
 
 
-def parse_plot_kwargs(config: dict):
+def parse_plot_kwargs(plot_map: dict, plot_kwargs_defaults: dict):
     """Parse plot methods plot_kwargs per process from plot_map"""
-    plot_map = config["plot_map"]
-    plot_kwargs_defaults = config["plot_kwargs_defaults"]
     all_plot_kwargs = {}
     for process, plots in plot_map.items():
         all_plot_kwargs[process] = {}

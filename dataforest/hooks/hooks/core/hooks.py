@@ -129,11 +129,12 @@ def hook_catalogue(dp):
 def hook_generate_plots(dp: dataprocess):
     plot_sources = dp.branch.plot.plot_method_lookup
     current_process = dp.branch.current_process
-    all_plot_kwargs_sets = dp.branch.plot.plot_kwargs[current_process]
-    process_plot_methods = dp.branch.plot.plot_methods[current_process]
-    process_plot_map = dp.branch[dp.branch.current_process].plot_map
+    all_plot_kwargs_sets = dp.branch.plot.plot_kwargs.get(current_process, dict())
+    process_plot_methods = dp.branch.plot.plot_methods.get(current_process, dict())
+    process_plot_map = dp.branch[current_process]._plot_map
     requested_plot_methods = deepcopy(process_plot_methods)
 
+    exceptions = []
     for method in plot_sources.values():
         plot_method_name = method.__name__
         if plot_method_name in requested_plot_methods.values():
@@ -143,13 +144,18 @@ def hook_generate_plots(dp: dataprocess):
                 plot_path = process_plot_map[plot_name][plot_kwargs_key]
                 kwargs = deepcopy(plot_kwargs_sets[plot_kwargs_key])
                 kwargs["plot_path"] = plot_path
-                method(dp.branch, **kwargs)
+                try:
+                    method(dp.branch, show=False, **kwargs)
+                except Exception as e:
+                    exceptions.append(e)
             requested_plot_methods.pop(plot_name)
 
     if len(requested_plot_methods) > 0:  # if not all requested mapped to functions in plot sources
         logging.warning(
             f"Requested plotting methods {requested_plot_methods} are not implemented so they were skipped."
         )
+    for e in exceptions:
+        raise e
 
 
 @hook

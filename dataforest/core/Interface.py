@@ -104,7 +104,7 @@ class Interface:
         kwargs = {**additional_kwargs, **kwargs}
         inst = interface_cls(root, **kwargs)
         if root_plots:
-            inst.create_root_plots(plot_kwargs)
+            inst.plot.generate_plots("root", plot_kwargs)
         return inst
 
     @classmethod
@@ -166,7 +166,7 @@ class Interface:
         kwargs = {**additional_kwargs, **kwargs}
         inst = interface_cls(root, **kwargs)
         if root_plots:
-            inst.create_root_plots(plot_kwargs)
+            inst.plot.generate_plots("root", plot_kwargs)
         return inst
 
     @staticmethod

@@ -287,28 +287,6 @@ class DataBranch(DataBase):
             data_attr = f"_{attr_name}"
             setattr(self, data_attr, None)
 
-    def create_root_plots(
-        self, plot_kwargs: Optional[Dict[str, dict]] = None, overwrite: bool = False, stop_on_error: bool = False
-    ):
-        if self.is_process_plots_exist("root") and not overwrite:
-            self.logger.info(
-                f"plots already present for `root` at {self['root'].plots_path}. To regenerate plots, delete directory"
-            )
-            return
-
-        if plot_kwargs is None:
-            plot_kwargs = self.plot.plot_kwargs["root"]
-        root_plot_map = self["root"].plot_map
-        root_plot_methods = self.plot.plot_methods.get("root", [])
-
-        for plot_name, plot_method in root_plot_methods.items():
-            kwargs_sets = plot_kwargs.get(plot_name, dict())
-            for plot_kwargs_key, _kwargs in kwargs_sets.items():
-                method = getattr(self.plot, plot_method)
-                kwargs = deepcopy(_kwargs)
-                kwargs["plot_path"] = root_plot_map[plot_name][plot_kwargs_key]
-                method(stop_on_error=stop_on_error, **kwargs)
-
     def is_process_plots_exist(self, process_name: str) -> bool:
         return self[process_name].plots_path.exists()
 

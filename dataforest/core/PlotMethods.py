@@ -1,3 +1,4 @@
+from copy import deepcopy
 from functools import wraps
 import logging
 from pathlib import Path
@@ -32,9 +33,10 @@ class PlotMethods(metaclass=MetaPlotMethods):
         # self._plot_cache = {process: PlotCache(self.branch, process) for process in self.branch.spec.processes}
         self._img_cache = {}
 
-    def display(self, process_name: str):
+    def show(self, process_name: str):
         plots_path = self.branch[process_name].plots_path
         for img_path in plots_path.iterdir():
+            display(str(img_path))
             display(Image(img_path))
 
     @typechecked
@@ -138,8 +140,8 @@ class PlotMethods(metaclass=MetaPlotMethods):
             try:
                 process_run = branch[branch.current_process]
                 plot_name = branch.plot.method_key_lookup.get(method_name, None)
-                if plot_name in process_run.plot_map:
-                    if not (plt_filename_lookup := process_run.plot_map[plot_name]):
+                if plot_name in process_run._plot_map:
+                    if not (plt_filename_lookup := process_run._plot_map[plot_name]):
                         if plt_filename_lookup:
                             _, plt_filepath = next(iter(plt_filename_lookup.items()))
                             plt_dir = plt_filepath.parent
@@ -153,4 +155,24 @@ class PlotMethods(metaclass=MetaPlotMethods):
 
         return wrapped
 
-    # def __getitem__(self, key):
+    def _generate_root_plots(
+        self, plot_kwargs: Optional[Dict[str, dict]] = None, overwrite: bool = False, stop_on_error: bool = False
+    ):
+        if self.branch.is_process_plots_exist("root") and not overwrite:
+            logging.info(
+                f"plots already present for `root` at {self.branch['root'].plots_path}. To regenerate plots, delete dir"
+            )
+            return
+
+        if plot_kwargs is None:
+            plot_kwargs = self.plot_kwargs["root"]
+        root_plot_map = self.branch["root"]._plot_map
+        root_plot_methods = self.plot_methods.get("root", [])
+
+        for plot_name, plot_method in root_plot_methods.items():
+            kwargs_sets = plot_kwargs.get(plot_name, dict())
+            for plot_kwargs_key, _kwargs in kwargs_sets.items():
+                method = getattr(self, plot_method)
+                kwargs = deepcopy(_kwargs)
+                kwargs["plot_path"] = root_plot_map[plot_name][plot_kwargs_key]
+                method(stop_on_error=stop_on_error, **kwargs)

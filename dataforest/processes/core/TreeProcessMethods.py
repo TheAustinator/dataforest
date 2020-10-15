@@ -94,10 +94,7 @@ class TreeProcessMethods:
                 return pool(process(branch) for branch in unique_branches.values())
 
             exec_scheme = "PARALLEL" if parallel else "SERIAL"
-            logging.info(
-                f"{exec_scheme} execution of {method_name} over {self._N_JOBS} workers on {len(unique_branches)} "
-                f"unique conditions"
-            )
+            logging.info(f"{exec_scheme} execution of {method_name} on {len(unique_branches)} unique branches")
             kernel = _distributed_kernel_parallel if parallel else _distributed_kernel_serial
             ret_vals = kernel()
             return ret_vals

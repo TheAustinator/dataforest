@@ -14,24 +14,26 @@ class MetaPlotMethods(MetaConfig):
 
     @property
     def PLOT_MAP(cls):
-        return cls.CONFIG["plot_map"]
+        return cls.CONFIG.get("plot_map", dict())
 
     @property
     def PROCESS_PLOT_METHODS(cls):
         try:
             plot_methods = cls.CONFIG["plot_methods"]
         except KeyError:
-            plot_methods = build_process_plot_method_lookup(config=cls.CONFIG)
+            plot_methods = build_process_plot_method_lookup(cls.CONFIG.get("plot_map", dict()))
 
         return plot_methods
 
     @property
     def PLOT_KWARGS_DEFAULTS(cls):
-        return cls.CONFIG["plot_kwargs_defaults"]
+        return cls.CONFIG.get("plot_kwargs_defaults", dict())
 
     @property
     def PLOT_KWARGS(cls):  # TODO-QC: mapping of process, plot to plot_kwargs
-        plot_kwargs = parse_plot_kwargs(config=cls.CONFIG)
+        plot_map = cls.CONFIG.get("plot_map", dict())
+        plot_kwargs_defaults = cls.CONFIG.get("plot_kwargs_defaults", dict())
+        plot_kwargs = parse_plot_kwargs(plot_map, plot_kwargs_defaults)
         return plot_kwargs
 
     # @property

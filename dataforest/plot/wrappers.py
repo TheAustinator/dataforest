@@ -1,6 +1,7 @@
 from functools import wraps
 import json
 import logging
+from pathlib import Path
 from itertools import product
 from typing import Tuple, Optional, AnyStr, Union
 
@@ -25,6 +26,7 @@ def plot_py(plot_func):
         facet: Optional[str] = None,
         plot_path: Optional[AnyStr] = None,
         facet_dim: tuple = (),
+        show: bool = True,
         **kwargs,
     ) -> Union[plt.Figure, Tuple[plt.Figure, np.ndarray]]:
         prep = PlotPreparator(branch)
@@ -48,9 +50,13 @@ def plot_py(plot_func):
             if stratify is not None:
                 kwargs["label"] = row["stratify"]
             plot_func(row["branch"], ax=ax, **kwargs)
+            if stratify is not None:
+                ax.legend()
         if plot_path is not None:
             logging.info(f"saving py figure to {plot_path}")
             prep.fig.savefig(plot_path)
+        if show:
+            display(prep.fig)
         return prep.fig, prep.ax_arr
 
     return wrapper
@@ -63,6 +69,7 @@ def plot_r(plot_func):
         stratify: Optional[str] = None,
         facet: Optional[str] = None,
         plot_path: Optional[AnyStr] = None,
+        show: bool = True,
         **kwargs,
     ):
         def _get_plot_script():
@@ -73,10 +80,12 @@ def plot_r(plot_func):
 
         stratify = None if stratify in PlotPreparator.NONE_VARIANTS else stratify
         facet = None if facet in PlotPreparator.NONE_VARIANTS else facet
+        plot_path = plot_path if plot_path else "/tmp/plot.png"
+
         if facet is not None:
-            logging.warning("facet not yet implemented for R plots, but will create separate plots")
+            logging.warning(f"{plot_func.__name__} facet not yet implemented for R plots")
         if stratify is not None:
-            logging.warning("stratify not yet supported for R plots")
+            logging.warning(f"{plot_func.__name__} stratify not yet supported for R plots")
         plot_source, r_script = _get_plot_script()
         plot_size = kwargs.pop("plot_size", PlotPreparator.DEFAULT_PLOT_RESOLUTION_PX)
         if stratify is not None:
@@ -108,9 +117,13 @@ def plot_r(plot_func):
             ]
             logging.info(f"saved R figure to {plot_path}")
             plot_func(branch, r_script, args)  # plot_kwargs already included in args
-            img = Image("/tmp/plot.png")
-            display(img)
-            img_arr.append(img)
+            img = Image(plot_path)
+            if not Path(plot_path).exists():
+                logging.warning(f"{plot_func.__name__} output file not found after execution for {val}")
+            else:
+                if show:
+                    display(img)
+                img_arr.append(img)
         return img_arr
 
     return wrapper
@@ -126,6 +139,8 @@ class requires:
 
         @wraps(func)
         def wrapper(branch: "DataBranch", *args, **kwargs):
+            if not branch[self._req_process].success:
+                raise ValueError(f"`{func.__name__}` requires a complete and successful process: `{self._req_process}`")
             precursors = branch.spec.get_precursors_lookup(incl_current=True)[branch.current_process]
             if self._req_process not in precursors:
                 proc = self._req_process
