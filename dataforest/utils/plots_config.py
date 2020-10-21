@@ -28,7 +28,17 @@ def build_process_plot_method_lookup(config: dict) -> Dict[str, Dict[str, str]]:
 
 
 def parse_plot_kwargs(config: dict):
-    """Parse plot methods plot_kwargs per process from plot_map"""
+    """
+    Parse plot methods plot_kwargs per process from plot_map
+    
+    Example:
+        {
+        "root": {
+            "_UMIS_PER_CELL_HIST_": {
+                '{"plot_size": "default", "stratify": "default"}': {"stratify": "none", "plot_size": [800, 800]}
+            }
+        }
+    """
     plot_map = config["plot_map"]
     plot_kwargs_defaults = config["plot_kwargs_defaults"]
     all_plot_kwargs = {}
@@ -58,6 +68,14 @@ def parse_plot_map(config: dict):
     """
     Parse plot file map per process from plot_map and ensures that
     implicit definition returns a dictionary of default values for all plot_kwargs
+
+    Example:
+        {
+        "root": {
+            "_UMIS_PER_CELL_HIST_": {
+                '{"plot_size": "default", "stratify": "default"}': "umis_per_cell_hist-plot_size:800+800-stratify:none.png"
+            }
+        }
     """
     plot_map = config["plot_map"]
     plot_kwargs_defaults = config["plot_kwargs_defaults"]
@@ -173,6 +191,30 @@ def _map_kwargs_opts_to_values(plot_kwargs, plot_kwargs_defaults):
 
 
 def _get_plot_kwargs_feed(plot_kwargs: dict, plot_kwargs_defaults: dict, plot_name: str, map_to_default_kwargs=False):
+    """
+    Create a feeding of kwargs tuples to create multiple plots, replacing values with
+    plot_kwargs_defaults values
+
+    Example:
+        # input plot_kwargs
+        {
+            "stratify": ["sample_id", "default"],
+            "plot_size": ["default", "default"]
+        }
+
+        # output:
+        [
+            {
+                "stratify": "sample_id",
+                "plot_size": [800, 800]
+            },
+            {
+                "stratify": None,
+                "plot_size": [800, 800]
+            }
+        ]
+    """
+
     plot_kwargs = _unify_kwargs_opt_lens(plot_kwargs, plot_kwargs_defaults, plot_name)
     if map_to_default_kwargs:
         plot_kwargs = _map_kwargs_opts_to_values(plot_kwargs, plot_kwargs_defaults)
