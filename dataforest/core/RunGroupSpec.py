@@ -1,5 +1,5 @@
 from itertools import product
-from typing import Union, Iterable, List
+from typing import Union, Iterable, List, Tuple, Any
 
 from dataforest.core.RunSpec import RunSpec
 from dataforest.core.Sweep import Sweep
@@ -33,11 +33,12 @@ class RunGroupSpec(RunSpec):
             run_specs: list of `RunSpec`s representing all combinations of
                 values from sweeps
         """
-        sub_groups = self._expand_sweeps(self, (list, set, tuple))
+        sub_groups, combos = self._expand_sweeps(self, (list, set, tuple))
         # if there were no operations in array format to be expanded
         if isinstance(sub_groups, dict):
             self._map_sweeps()
-            self_expand = {k: self._expand_sweeps(v, Sweep) for k, v in self.items() if isinstance(v, dict)}
+            # expand _SWEEP_ keys
+            self_expand = {k: self._expand_sweeps(v, Sweep)[0] for k, v in self.items() if isinstance(v, dict)}
             self_expand.update({k: v for k, v in self.items() if not isinstance(v, dict)})
             # if any operations are still in array format
             if any(map(lambda x: isinstance(x, list), self_expand.values())):
@@ -64,7 +65,8 @@ class RunGroupSpec(RunSpec):
                         self[operation][key] = Sweep(operation, key, sweep_obj)
 
     @staticmethod
-    def _expand_sweeps(dict_: dict, types: Union[type, Iterable[type]]) -> Union[dict, List[dict]]:
+    # TODO: type hint combos
+    def _expand_sweeps(dict_: dict, types: Union[type, Iterable[type]]) -> Tuple[Union[dict, List[dict]], Any]:
         """
         Expand sweeps into a list of dicts representing all possible combinations.
         Args:
@@ -73,7 +75,9 @@ class RunGroupSpec(RunSpec):
         """
         sweeps_part = order_dict({k: v for k, v in dict_.items() if isinstance(v, types)})
         static_part = {k: v for k, v in dict_.items() if k not in sweeps_part}
-        combos = product(*sweeps_part.values())
+        combos = list(product(*sweeps_part.values()))
         dicts = [{**static_part, **dict(zip(sweeps_part.keys(), combo))} for combo in combos]
-        dicts = dicts[0] if len(dicts) == 1 else dicts
-        return dicts
+        if len(dicts) == 1:
+            dicts = dicts[0]
+            combos = combos[0]
+        return dicts, combos

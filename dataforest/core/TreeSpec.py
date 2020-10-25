@@ -6,6 +6,7 @@ from dataforest.core.BranchSpec import BranchSpec
 from dataforest.core.RunGroupSpec import RunGroupSpec
 
 if TYPE_CHECKING:
+    from dataforest.core.DataBranch import DataBranch
     from dataforest.core.RunSpec import RunSpec
 
 
@@ -54,7 +55,10 @@ class TreeSpec(BranchSpec):
     def __init__(self, tree_spec: Union[List[dict], "TreeSpec[RunGroupSpec]"], twigs: Optional[List[dict]]):
         super(list, self).__init__()
         self.extend([RunGroupSpec(item) for item in tree_spec])
-        self.twig_specs = dict()
+        self.twig_lookup = {str(twig): twig for twig in twigs}
+        # TODO: abstract to method
+        if self.twig_lookup:
+            self.twig_lookup = {"base": [], **self.twig_lookup}
         self.branch_specs = self._build_branch_specs(twigs)
         self.sweep_dict = {x["_PROCESS_"]: x.sweeps for x in self}
         self.sweep_dict["root"] = set()
@@ -67,31 +71,39 @@ class TreeSpec(BranchSpec):
             incl_root=True, incl_current=True
         )
 
-    def _build_branch_specs(self, twigs: Optional[List[dict]]):
-        specs = list(map(BranchSpec, product(*[run_group_spec.run_specs for run_group_spec in self])))
-        template = specs[0]
-        specs.extend(self._add_twigs(template, twigs))
-        return specs
+    @staticmethod
+    def add_twig(template: "BranchSpec", twig: Union[tuple, list]):
+        spec = deepcopy(template)
+        if isinstance(twig, tuple):
+            twig = [twig]
+        for mod in twig:
+            val = mod[-1]
+            final_key = mod[-2]
+            accessors = mod[:-2]
+            scope = spec
+            for key in accessors:
+                scope = scope[key]
+            scope[final_key] = val
+        return spec
 
-    def _add_twigs(self, template: "RunSpec", twigs: Optional[List[Union[tuple, list]]]):
-        specs = list()
-        self.twig_specs["base"] = template
+    @staticmethod
+    def _apply_add_twigs(specs: List["BranchSpec"], twigs: Optional[Union[tuple, list]]):
         if twigs is None:
             return specs
+        specs = [spec for x in specs for spec in TreeSpec._add_twigs(x, twigs)]
+        return specs
+
+    @staticmethod
+    def _add_twigs(template: "BranchSpec", twigs: List[Union[tuple, list]]):
+        specs = list()
         for twig in twigs:
-            spec_ = deepcopy(template)
-            if isinstance(twig, tuple):
-                twig = [twig]
-            for mod in twig:
-                val = mod[-1]
-                final_key = mod[-2]
-                accessors = mod[:-2]
-                scope = spec_
-                for key in accessors:
-                    scope = scope[key]
-                scope[final_key] = val
-            specs.append(spec_)
-            self.twig_specs[str(twig)] = spec_
+            spec = TreeSpec.add_twig(template, twig)
+            specs.append(spec)
+        return specs
+
+    def _build_branch_specs(self, twigs: Optional[List[dict]]):
+        specs = list(map(BranchSpec, product(*[run_group_spec.run_specs for run_group_spec in self])))
+        specs.extend(self._apply_add_twigs(specs, twigs))
         return specs
 
     def __setitem__(self, key, value):

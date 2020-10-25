@@ -4,8 +4,9 @@ from typing import Union, Optional, List, Dict
 
 from dataforest.core.DataBase import DataBase
 from dataforest.core.DataBranch import DataBranch
+from dataforest.core.PlotTreeMethods import PlotTreeMethods
 from dataforest.core.ProcessTreeRun import ProcessTreeRun
-from dataforest.core.RunGroupSpec import RunGroupSpec
+from dataforest.core.TreeDataFrame import DataFrameList
 from dataforest.core.TreeSpec import TreeSpec
 from dataforest.processes.core.TreeProcessMethods import TreeProcessMethods
 from dataforest.structures.cache.BranchCache import BranchCache
@@ -14,6 +15,7 @@ from dataforest.structures.cache.BranchCache import BranchCache
 class DataTree(DataBase):
     _LOG = logging.getLogger("DataTree")
     _BRANCH_CLASS = DataBranch
+    _PLOT_METHODS = PlotTreeMethods
 
     def __init__(
         self,
@@ -35,7 +37,11 @@ class DataTree(DataBase):
         self.remote_root = remote_root
         self._branch_cache = BranchCache(root, self.tree_spec.branch_specs, self._BRANCH_CLASS, verbose, remote_root,)
         self._process_tree_runs = dict()
-        self.process = TreeProcessMethods(self.tree_spec, self._branch_cache)
+        self.process = TreeProcessMethods(self)
+
+    @property
+    def meta(self):
+        return DataFrameList([branch.meta for branch in self.branches])
 
     @property
     def n_branches(self):
@@ -70,6 +76,14 @@ class DataTree(DataBase):
 
     def run_all(self, workers: int = 1, batch_queue: Optional[str] = None):
         return [method() for method in self.process.process_methods]
+
+    def unique_branches_at_process(self, process_name: str) -> Dict[str, "DataBranch"]:
+        """
+        Gets a subset of branches representing those unique up to the specified
+        process. From two branches which only become distinguished after
+        `process_name`, just one will be selected.
+        """
+        return {str(branch.spec[:process_name]): branch for branch in self.branches}
 
     def create_root_plots(self, plot_kwargs: Optional[Dict[str, dict]] = None):
         rand_spec = self.tree_spec.branch_specs[0]

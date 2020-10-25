@@ -5,6 +5,8 @@ from typing import Callable, Dict, Optional, Type, Union, List, Tuple, Any, Iter
 import pandas as pd
 from pathlib import Path
 
+from typeguard import typechecked
+
 from dataforest.core.DataBase import DataBase
 from dataforest.structures.cache.PathCache import PathCache
 from dataforest.structures.cache.IOCache import IOCache
@@ -87,7 +89,6 @@ class DataBranch(DataBase):
         _writer_method_map:
     """
 
-    PLOT_METHODS: Type = PlotMethods
     PROCESS_METHODS: Type = ProcessMethods
     SCHEMA_CLASS: Type = ProcessSchema
     READER_METHODS: Type = ReaderMethods
@@ -123,7 +124,6 @@ class DataBranch(DataBase):
         self.spec = self._init_spec(branch_spec)
         self.verbose = verbose
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.plot = self.PLOT_METHODS(self)
         self.process = self.PROCESS_METHODS(self, self.spec)
         self.schema = self.SCHEMA_CLASS()
         self._paths_exists = PathCache(self.root, self.spec, exists_req=True)
@@ -187,6 +187,10 @@ class DataBranch(DataBase):
         if self._meta is None:
             self._meta = self._get_meta(self.current_process)
         return self._meta
+
+    def add_metadata(self, df: pd.DataFrame):
+        # TODO: need to write to keep persistent?
+        self.set_meta(pd.concat([self.meta, df], axis=1))
 
     def goto_process(self, process_name: str) -> "DataBranch":
         """

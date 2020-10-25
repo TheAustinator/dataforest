@@ -1,3 +1,4 @@
+fastcore
 ipywidgets
 joblib
 matplotlib

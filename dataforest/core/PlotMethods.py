@@ -23,14 +23,12 @@ class PlotMethods(metaclass=MetaPlotMethods):
     """
 
     def __init__(self, branch: "DataBranch"):
-        self._logger = logging.getLogger(self.__class__.__name__)
         self.branch = branch
         for name, plot_method in self.plot_method_lookup.items():
             callable_ = copy_func(plot_method)
             callable_.__name__ = name
             setattr(self, name, self._wrap(callable_))
         tether(self, "branch", incl_methods=list(self.plot_method_lookup.keys()))
-        # self._plot_cache = {process: PlotCache(self.branch, process) for process in self.branch.spec.processes}
         self._img_cache = {}
 
     def show(self, process_name: str):
@@ -72,20 +70,7 @@ class PlotMethods(metaclass=MetaPlotMethods):
 
     @property
     def method_lookup(self):
-        return {k: getattr(self, method_name) for k, method_name in self.method_name_lookup.items()}
-
-    @property
-    def method_name_lookup(self):
-        global_plot_methods = {
-            config_name: callable_name
-            for name_mapping in self.plot_methods.values()
-            for config_name, callable_name in name_mapping.items()
-        }
-        return global_plot_methods
-
-    @property
-    def method_key_lookup(self):
-        return {v: k for k, v in self.method_name_lookup.items()}
+        return {k: getattr(self, method_name) for k, method_name in self.key_method_lookup.items()}
 
     @property
     def plot_kwargs_defaults(self):
@@ -124,13 +109,26 @@ class PlotMethods(metaclass=MetaPlotMethods):
         return avail_dict
 
     @property
+    def key_method_lookup(self):
+        """
+        Key: method key in format of config (e.g. "_UMAP_EMBEDDINGS_SCAT_")
+        Value: method name (e.g. "plot_umap_embeddings_scat")
+        """
+        convert_to_key = lambda s: "_" + s.upper()[5:] + "_"
+        return {convert_to_key(x): x for k, v in self.methods.items() for x in v}
+
+    @property
+    def method_key_lookup(self):
+        """inverted `key_method_lookup`"""
+        return {v: k for k, v in self.key_method_lookup.items()}
+
+    @property
     def keys(self) -> Dict[str, Set[str]]:
         """
         Key: process name at which plot becomes unlocked
         Value: keys for plots in config
         """
-        convert_to_key = lambda set_: set(map(lambda s: "_" + s.upper()[5:] + "_", set_))
-        return {k: convert_to_key(v) for k, v in self.methods.items()}
+        return {k: set(map(lambda x: self.method_key_lookup[x], v)) for k, v in self.methods.items()}
 
     def _wrap(self, method):
         """Wrap with mkdirs and logging"""
