@@ -6,7 +6,7 @@ from dataforest.core.DataBase import DataBase
 from dataforest.core.DataBranch import DataBranch
 from dataforest.core.PlotTreeMethods import PlotTreeMethods
 from dataforest.core.ProcessTreeRun import ProcessTreeRun
-from dataforest.core.TreeDataFrame import DataFrameList
+from dataforest.structures.DistributedContainer import DistributedContainer
 from dataforest.core.TreeSpec import TreeSpec
 from dataforest.processes.core.TreeProcessMethods import TreeProcessMethods
 from dataforest.structures.cache.BranchCache import BranchCache
@@ -41,7 +41,7 @@ class DataTree(DataBase):
 
     @property
     def meta(self):
-        return DataFrameList([branch.meta for branch in self.branches])
+        return DistributedContainer([branch.meta for branch in self.branches])
 
     @property
     def n_branches(self):

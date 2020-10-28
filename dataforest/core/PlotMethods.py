@@ -25,8 +25,10 @@ class PlotMethods(metaclass=MetaPlotMethods):
     def __init__(self, branch: "DataBranch"):
         self.branch = branch
         for name, plot_method in self.plot_method_lookup.items():
-            callable_ = copy_func(plot_method)
-            callable_.__name__ = name
+            # callable_ = copy_func(plot_method)
+            # callable_.__name__ = name
+            # callable_ = type(plot_method.__name__, (object,), dict(vars(plot_method)))
+            callable_ = deepcopy(plot_method)
             setattr(self, name, self._wrap(callable_))
         tether(self, "branch", incl_methods=list(self.plot_method_lookup.keys()))
         self._img_cache = {}
@@ -54,7 +56,7 @@ class PlotMethods(metaclass=MetaPlotMethods):
         for process, proc_plot_map in plot_map.items():
             method_names_config = tuple(proc_plot_map.keys())
             for name_config in method_names_config:
-                method_name = self.method_name_lookup[name_config]
+                method_name = self.key_method_lookup[name_config]
                 method = getattr(self, method_name)
                 kwarg_sets = plot_kwargs[process][name_config].values()
                 for kwargs in kwarg_sets:

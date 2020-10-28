@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 class PlotWidget:
     def __init__(self, tree: "DataTree", plot_key: str, use_saved: bool = True, **plot_kwargs):
         """
-
         Args:
             tree:
             plot_key: key format of plot name (e.g. "_UMIS_VS_PERC_HSP_SCAT_")
@@ -66,7 +65,7 @@ class PlotWidget:
                 (name, operation, process) = param_keys_str.split(":")
                 spec[process][operation][name] = value
             # TODO: do we need to do something with kwargs? Or taken care of?
-            [print(k, kwargs.pop(k, None)) for k in self._plot_kwargs]
+            [kwargs.pop(k, None) for k in self._plot_kwargs]
             # add twigs
             if twig_str:
                 twig = twig_lookup[twig_str]

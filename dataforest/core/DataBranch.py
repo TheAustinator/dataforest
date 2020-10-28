@@ -14,13 +14,14 @@ from dataforest.core.ProcessRun import ProcessRun
 from dataforest.core.BranchSpec import BranchSpec
 from dataforest.filesystem.tree.Tree import Tree
 
-from dataforest.core.PlotMethods import PlotMethods
 from dataforest.processes.core.ProcessMethods import ProcessMethods
 from dataforest.core.schema.ProcessSchema import ProcessSchema
 from dataforest.filesystem.io import ReaderMethods
 from dataforest.filesystem.io.WriterMethods import WriterMethods
 from dataforest.utils.exceptions import BadSubset, BadFilter
 from dataforest.utils.utils import update_recursive, label_df_partitions
+
+Container = (set, list, tuple)
 
 
 class DataBranch(DataBase):
@@ -285,7 +286,7 @@ class DataBranch(DataBase):
 
     def clear_data(self, attrs: Optional[Iterable[str]] = None, all_data: bool = False):
         if not (attrs != None or all_data):
-            raise ValueError("Must provide `attrs` or `all_data`")
+            raise ValueError("Must provide `args` or `all_data`")
         attrs = self.DATA_FILE_ALIASES if all_data else attrs
         for attr_name in attrs:
             data_attr = f"_{attr_name}"
@@ -416,6 +417,9 @@ class DataBranch(DataBase):
         df_selector = cls._get_df_selector(df, subset_dict)
         df = df.loc[df_selector]
         if len(df) == 0:
+            import ipdb
+
+            ipdb.set_trace()
             raise BadSubset(subset_dict)
         return df
 
@@ -431,11 +435,18 @@ class DataBranch(DataBase):
     def _get_df_selector(df: pd.DataFrame, op_dict: Dict[str, Any]) -> pd.Series:
         def _check_row_eq(row: pd.Series) -> bool:
             for key, val in row.iteritems():
-                if isinstance(val, set):
-                    if not op_dict[key] in val:
+                op_val = op_dict[key]
+                if isinstance(val, Container) and isinstance(op_val, Container):
+                    if not set(val).union(op_val):
+                        return False
+                elif isinstance(val, Container):
+                    if op_val not in val:
+                        return False
+                elif isinstance(op_val, Container):
+                    if val not in op_val:
                         return False
                 else:
-                    if not op_dict[key] == val:
+                    if op_val != val:
                         return False
             return True
 

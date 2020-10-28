@@ -1,1 +1,2 @@
-from .wrappers import plot_py, plot_r, requires
+from dataforest.plot.decorators.plot_py import plot_py
+from dataforest.plot.decorators.plot_r import plot_r

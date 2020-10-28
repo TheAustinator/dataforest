@@ -60,8 +60,8 @@ class TreeProcessMethods:
                 stop_on_hook_error:
                 clear_data: clear cached data attributes of each branch
                     after process execution to save memory. If boolean, whether
-                    or not to clear all data attrs, if list, names of data
-                    attrs to clear
+                    or not to clear all data args, if list, names of data
+                    args to clear
                 force_rerun: force the process to rerun even if already done
                 parallel: whether or not to parallelize
                 **kwargs:
@@ -77,7 +77,7 @@ class TreeProcessMethods:
                 if not branch[method_name].done or force_rerun:
                     ret = branch_method(*args, **kwargs)
                     if clear_data:
-                        clear_kwargs = {"all_data": True} if isinstance(clear_data, bool) else {"attrs": clear_data}
+                        clear_kwargs = {"all_data": True} if isinstance(clear_data, bool) else {"args": clear_data}
                         branch.clear_data(**clear_kwargs)
                     return ret
 

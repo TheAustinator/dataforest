@@ -1,3 +1,4 @@
+import shutil
 from collections import ChainMap
 import logging
 from pathlib import Path
@@ -174,11 +175,23 @@ class ProcessRun:
         """
         Prints stdout and stderr log files
         """
-        self._print_logs()
+        return self._print_logs()
 
     def subprocess_runs(self, process_name: str) -> pd.DataFrame:
         """DataFrame of branch_spec info for all runs of a given subprocess"""
         raise NotImplementedError()
+
+    def delete_files(self, skip_confirm: bool = False):
+        """
+        Deletes process run directory. Useful in the case of bugs arising from
+        partially completed runs or persistent old files.
+        """
+        if skip_confirm:
+            proceed = True
+        else:
+            proceed = input(f"delete {self.path} and all contents? y/n") == "y"
+        if proceed:
+            shutil.rmtree(self.path, ignore_errors=True)
 
     @property
     def _process_plot_map(self) -> Dict[str, Path]:

@@ -1,37 +1,34 @@
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, List, Iterable, Union
+from typing import Any, Callable, Iterable
 
 import pandas as pd
 
-from dataforest.structures.cache.BranchCache import BranchCache
 
-if TYPE_CHECKING:
-    from dataforest.core.DataTree import DataTree
-
-
-class DataFrameList(list):
+class DistributedContainer(list):
     TETHER_EXCLUDE = {"__class__", "__init__", "__weakref__", "__dict__", "__getitem__", "__setitem__"}
+    ELEM_CLASSES = [pd.DataFrame, pd.Series]
 
-    def __init__(self, df_list: Iterable[Union[pd.DataFrame, pd.Series]]):
-        super().__init__(list(df_list))
+    def __init__(self, data_list: Iterable[Any]):
+        super().__init__(list(data_list))
         self._elem_class = self._get_elem_class(self)
         self._tether_df_methods()
 
     def get_elem(self, i: int):
         """
         Get the df or series from the list-like structure since getitem is
-        overloaded by the pandas method
+        overloaded by the pandas method. The getitem method will return a
+        list of results from getitem being applied to each element, whereas
+        this method can be used to get the elements themselves.
         Args:
             i: index in list-like structure
         """
         return list.__getitem__(self, i)
 
-    @staticmethod
-    def _get_elem_class(container):
-        if all(isinstance(x, pd.DataFrame) for x in container):
-            return pd.DataFrame
-        elif all(isinstance(x, pd.Series) for x in container):
-            return pd.Series
+    @classmethod
+    def _get_elem_class(cls, container):
+        for class_ in cls.ELEM_CLASSES:
+            if all(isinstance(x, class_) for x in container):
+                return class_
 
     def _tether_df_methods(self):
         if self._elem_class is None:

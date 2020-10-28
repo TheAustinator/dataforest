@@ -18,7 +18,7 @@ def hook_goto_process(dp):
     dp.branch.goto_process(dp.name)
 
 
-@hook(attrs=["comparative"])
+@hook("comparative")
 def hook_comparative(dp):
     """Sets up DataBranch for comparative analysis"""
     if "_PARTITION_" in dp.branch.spec:
@@ -38,7 +38,7 @@ def hook_comparative(dp):
         dp.branch.set_partition(dp.name)
 
 
-@hook(attrs=["requires"])
+@hook("requires")
 def hook_input_exists(dp):
     """Checks that input `ProcessRun` directory exists"""
     if not dp.branch.paths_exists[dp.requires].exists():
