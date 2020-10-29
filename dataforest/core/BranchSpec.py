@@ -181,7 +181,10 @@ class BranchSpec(list):
         """See class definition"""
         run_spec_lookup = {"root": self._RUN_SPEC_CLASS({})}
         for run_spec in self:
-            process_name = run_spec.name
+            try:
+                process_name = run_spec.name
+            except Exception as e:
+                raise e
             if process_name in run_spec_lookup:
                 raise DuplicateProcessName(process_name)
             run_spec_lookup[process_name] = run_spec
