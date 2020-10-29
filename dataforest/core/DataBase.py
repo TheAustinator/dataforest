@@ -10,9 +10,11 @@ class DataBase:
     Mixin for `DataTree`, `DataBranch`, and derived class
     """
 
+    _PLOT_METHODS = PlotMethods
+
     def __init__(self):
         self.root = None
-        self.plot = PlotMethods(self)
+        self.plot = self._PLOT_METHODS(self)
 
     @property
     def root_built(self):

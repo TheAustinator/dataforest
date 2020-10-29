@@ -5,6 +5,8 @@ from typing import Callable, Dict, Optional, Type, Union, List, Tuple, Any, Iter
 import pandas as pd
 from pathlib import Path
 
+from typeguard import typechecked
+
 from dataforest.core.DataBase import DataBase
 from dataforest.structures.cache.PathCache import PathCache
 from dataforest.structures.cache.IOCache import IOCache
@@ -87,7 +89,6 @@ class DataBranch(DataBase):
         _writer_method_map:
     """
 
-    PLOT_METHODS: Type = PlotMethods
     PROCESS_METHODS: Type = ProcessMethods
     SCHEMA_CLASS: Type = ProcessSchema
     READER_METHODS: Type = ReaderMethods
@@ -123,7 +124,6 @@ class DataBranch(DataBase):
         self.spec = self._init_spec(branch_spec)
         self.verbose = verbose
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.plot = self.PLOT_METHODS(self)
         self.process = self.PROCESS_METHODS(self, self.spec)
         self.schema = self.SCHEMA_CLASS()
         self._paths_exists = PathCache(self.root, self.spec, exists_req=True)
@@ -188,6 +188,10 @@ class DataBranch(DataBase):
             self._meta = self._get_meta(self.current_process)
         return self._meta
 
+    def add_metadata(self, df: pd.DataFrame):
+        # TODO: need to write to keep persistent?
+        self.set_meta(pd.concat([self.meta, df], axis=1))
+
     def goto_process(self, process_name: str) -> "DataBranch":
         """
         Updates the state of the `DataBranch` object to reflect the
@@ -212,6 +216,29 @@ class DataBranch(DataBase):
             path_map_changes = {alias for alias, path in new_path_map.items() if prev_path_map.get(alias, None) != path}
             self.clear_data(path_map_changes)
         return self
+
+    def groupby(self, by: Union[str, list, set, tuple], **kwargs) -> Tuple[str, "DataBranch"]:
+        """
+        Operates like a pandas group_labels, but does not return a GroupBy object,
+        and yields (name, DataBranch), where each DataBranch is subset according to `by`,
+        which corresponds to columns of `self.meta`.
+        This is useful for batching analysis across various conditions, where
+        each run requires an DataBranch.
+        Args:
+            by: variables over which to group (like pandas)
+            **kwargs: for pandas group_labels on `self.meta`
+
+        Yields:
+            name: values for DataBranch `subset` according to keys specified in `by`
+            branch: new DataBranch which inherits `self.spec` with additional `subset`s
+                from `by`
+        """
+        if isinstance(by, (tuple, set)):
+            by = list(by)
+        for (name, df) in self.meta.groupby(by, **kwargs):
+            branch = self.copy()
+            branch.set_meta(df)
+            yield name, branch
 
     def fork(self, branch_spec: Union[list, BranchSpec]) -> "DataBranch":
         """
@@ -263,26 +290,6 @@ class DataBranch(DataBase):
         for attr_name in attrs:
             data_attr = f"_{attr_name}"
             setattr(self, data_attr, None)
-
-    def create_root_plots(self, plot_kwargs: Optional[Dict[str, dict]] = None):
-        if self.is_process_plots_exist("root"):
-            self.logger.info(
-                f"plots already present for `root` at {self['root'].plots_path}. To regenerate plots, delete directory"
-            )
-            return
-
-        if plot_kwargs is None:
-            plot_kwargs = self.plot.plot_kwargs["root"]
-        root_plot_map = self["root"].plot_map
-        root_plot_methods = self.plot.plot_methods.get("root", [])
-
-        for plot_name, plot_method in root_plot_methods.items():
-            kwargs_sets = plot_kwargs.get(plot_name, dict())
-            for plot_kwargs_key, _kwargs in kwargs_sets.items():
-                method = getattr(self.plot, plot_method)
-                kwargs = deepcopy(_kwargs)
-                kwargs["plot_path"] = root_plot_map[plot_name][plot_kwargs_key]
-                method(**kwargs)
 
     def is_process_plots_exist(self, process_name: str) -> bool:
         return self[process_name].plots_path.exists()
@@ -388,11 +395,15 @@ class DataBranch(DataBase):
             df = self.meta.copy()
         for (subset, filter_) in zip(subset_list, filter_list):
             for column, val in subset.items():
-                if val is not None:
-                    df = self._do_subset(df, column, val)
+                if "_MULTI_" in column:
+                    df = self._do_subset(df, val)
+                elif val is not None:
+                    df = self._do_subset(df, {column: val})
             for column, val in filter_.items():
-                if val is not None:
-                    df = self._do_filter(df, column, val)
+                if "_MULTI_" in column:
+                    df = self._do_filter(df, val)
+                elif val is not None:
+                    df = self._do_filter(df, {column: val})
         df.replace(" ", "_", regex=True, inplace=True)
         partitions_list = self.spec.get_partition_list(process_name)
         partitions = set().union(*partitions_list)
@@ -400,31 +411,36 @@ class DataBranch(DataBase):
             df = label_df_partitions(df, partitions, encodings=True)
         return df
 
-    @staticmethod
-    def _do_subset(df: pd.DataFrame, column: str, val: Any) -> pd.DataFrame:
-        prev_df = df.copy()
-        if isinstance(val, (list, set)):
-            df = df[df[column].isin(val)]
-        else:
-            df = df[df[column] == val]
-        if len(df) == len(prev_df):
-            logging.warning(f"Subset didn't change num of rows and may be unnecessary - column: {column}, val: {val}")
-        elif len(df) == 0:
-            raise BadSubset(column, val)
+    @classmethod
+    def _do_subset(cls, df: pd.DataFrame, subset_dict: Dict[str, Any]) -> pd.DataFrame:
+        df_selector = cls._get_df_selector(df, subset_dict)
+        df = df.loc[df_selector]
+        if len(df) == 0:
+            raise BadSubset(subset_dict)
+        return df
+
+    @classmethod
+    def _do_filter(cls, df: pd.DataFrame, filter_dict: Dict[str, Any]) -> pd.DataFrame:
+        df_selector = cls._get_df_selector(df, filter_dict)
+        df = df.loc[~df_selector]
+        if len(df) == 0:
+            raise BadFilter(filter_dict)
         return df
 
     @staticmethod
-    def _do_filter(df: pd.DataFrame, column: str, val: Any) -> pd.DataFrame:
-        prev_df = df.copy()
-        if isinstance(val, (list, set)):
-            df = df[~df[column].isin(val)]
-        else:
-            df = df[df[column] != val]
-        if len(df) == len(prev_df):
-            logging.warning(f"Filter didn't change num of rows and may be unnecessary - column: {column}, val: {val}")
-        elif len(df) == 0:
-            raise BadFilter(column, val)
-        return df
+    def _get_df_selector(df: pd.DataFrame, op_dict: Dict[str, Any]) -> pd.Series:
+        def _check_row_eq(row: pd.Series) -> bool:
+            for key, val in row.iteritems():
+                if isinstance(val, set):
+                    if not op_dict[key] in val:
+                        return False
+                else:
+                    if not op_dict[key] == val:
+                        return False
+            return True
+
+        df_selector = pd.DataFrame(pd.DataFrame(df[list(op_dict)]).apply(_check_row_eq, axis=1)).all(axis=1)
+        return df_selector
 
     def _map_file_io(self) -> Tuple[Dict[str, IOCache], Dict[str, IOCache]]:
         """

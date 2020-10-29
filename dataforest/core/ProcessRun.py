@@ -28,7 +28,7 @@ class ProcessRun:
         self._file_lookup = self._build_file_lookup()
         self._plot_lookup = self._build_plot_lookup()
         self._path_map = None
-        self._plot_map = None
+        self._plot_map_cache = None
         self._path_map_prior = None
 
     @property
@@ -45,6 +45,14 @@ class ProcessRun:
     def path(self) -> Path:
         """Path to directory containing processes output files and logs"""
         return self.branch.paths[self.process_name]
+
+    @property
+    def plots(self):
+        return self.branch.plot.show(self.process_name)
+
+    @property
+    def plot_methods(self):
+        return self.branch.plot.methods[self.process]
 
     @property
     def logs_path(self) -> Path:
@@ -84,14 +92,12 @@ class ProcessRun:
         return {file_alias: self.path / self._file_lookup[file_alias] for file_alias in self._file_lookup}
 
     @property
-    def process_plot_map(self) -> Dict[str, Path]:
-        plot_map_dict = {}
-        for plot_name in self._plot_lookup:
-            plot_map_dict[plot_name] = {}
-            for plot_kwargs_key, plot_filepath in self._plot_lookup[plot_name].items():
-                plot_map_dict[plot_name][plot_kwargs_key] = self.plots_path / plot_filepath
-
-        return plot_map_dict
+    def plot_lookup(self) -> Dict[str, List[Path]]:
+        """
+        Key: plot key (e.g. "_UMIS_PER_CELL_HIST_")
+        Value: list of plot paths of the type specified by key
+        """
+        return {plot_key: list(plot_path_map.values()) for plot_key, plot_path_map in self._plot_map.items()}
 
     @property
     def path_map(self) -> Dict[str, Path]:
@@ -104,13 +110,6 @@ class ProcessRun:
         if self._path_map is None:
             self._path_map = self._build_path_map(incl_current=True)
         return self._path_map
-
-    @property
-    def plot_map(self) -> Dict[str, Path]:
-        # TODO: confusing with new plot_map name in config - rename that to plot_settings?
-        if self._plot_map is None:
-            self._plot_map = self._build_path_map(incl_current=True, plot_map=True)
-        return self._plot_map
 
     @property
     def path_map_prior(self) -> Dict[str, Path]:
@@ -175,26 +174,28 @@ class ProcessRun:
         """
         Prints stdout and stderr log files
         """
-        log_dir = self.path / "_logs"
-        log_files = list(log_dir.iterdir())
-        stdouts = list(filter(lambda x: str(x).endswith(".out"), log_files))
-        stderrs = list(filter(lambda x: str(x).endswith(".err"), log_files))
-        if (len(stdouts) == 0) and (len(stderrs) == 0):
-            raise ValueError(f"No logs for processes: {self.process_name}")
-        for stdout in stdouts:
-            name = str(stdout.name).split(".out")[0]
-            cprint(f"STDOUT: {name}", "cyan", "on_grey")
-            with open(str(stdout), "r") as f:
-                print(f.read())
-        for stderr in stderrs:
-            name = str(stderr.name).split(".err")[0]
-            cprint(f"STDERR: {name}", "magenta", "on_grey")
-            with open(str(stderr), "r") as f:
-                print(f.read())
+        self._print_logs()
 
     def subprocess_runs(self, process_name: str) -> pd.DataFrame:
         """DataFrame of branch_spec info for all runs of a given subprocess"""
         raise NotImplementedError()
+
+    @property
+    def _process_plot_map(self) -> Dict[str, Path]:
+        plot_map_dict = {}
+        for plot_name in self._plot_lookup:
+            plot_map_dict[plot_name] = {}
+            for plot_kwargs_key, plot_filepath in self._plot_lookup[plot_name].items():
+                plot_map_dict[plot_name][plot_kwargs_key] = self.plots_path / plot_filepath
+
+        return plot_map_dict
+
+    @property
+    def _plot_map(self) -> Dict[str, Path]:
+        # TODO: confusing with new plot_map name in config - rename that to plot_settings?
+        if self._plot_map_cache is None:
+            self._plot_map_cache = self._build_path_map(incl_current=True, plot_map=True)
+        return self._plot_map_cache
 
     def _build_layers_files(self) -> Dict[str, str]:
         """
@@ -228,12 +229,30 @@ class ProcessRun:
         precursor_lookup = spec.get_precursors_lookup(incl_current=incl_current, incl_root=True)
         precursors = precursor_lookup[self.process_name]
         process_runs = [self] if plot_map else [self.branch[process_name] for process_name in precursors]
-        pr_attr = "process_plot_map" if plot_map else "process_path_map"
+        pr_attr = "_process_plot_map" if plot_map else "process_path_map"
         process_path_map_list = [getattr(pr, pr_attr) for pr in process_runs]
         path_map = dict()
         for process_path_map in process_path_map_list:
             path_map.update(process_path_map)
         return path_map
+
+    def _print_logs(self):
+        log_dir = self.path / "_logs"
+        log_files = list(log_dir.iterdir())
+        stdouts = list(filter(lambda x: str(x).endswith(".out"), log_files))
+        stderrs = list(filter(lambda x: str(x).endswith(".err"), log_files))
+        if (len(stdouts) == 0) and (len(stderrs) == 0):
+            raise ValueError(f"No logs for processes: {self.process_name}")
+        for stdout in stdouts:
+            name = str(stdout.name).split(".out")[0]
+            cprint(f"STDOUT: {name}", "cyan", "on_grey")
+            with open(str(stdout), "r") as f:
+                print(f.read())
+        for stderr in stderrs:
+            name = str(stderr.name).split(".err")[0]
+            cprint(f"STDERR: {name}", "magenta", "on_grey")
+            with open(str(stderr), "r") as f:
+                print(f.read())
 
     def __repr__(self):
         repr_ = super().__repr__()[:-1]  # remove closing bracket to append

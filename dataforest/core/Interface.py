@@ -1,3 +1,4 @@
+from copy import deepcopy
 from pathlib import Path
 from typing import Union, Optional, Iterable, List, AnyStr
 
@@ -37,8 +38,8 @@ class Interface:
 
         """
         kwargs = {
-            "branch_spec": branch_spec,
-            "tree_spec": tree_spec,
+            "branch_spec": deepcopy(branch_spec),
+            "tree_spec": deepcopy(tree_spec),
             "verbose": verbose,
             "current_process": current_process,
             "remote_root": remote_root,
@@ -104,7 +105,7 @@ class Interface:
         kwargs = {**additional_kwargs, **kwargs}
         inst = interface_cls(root, **kwargs)
         if root_plots:
-            inst.create_root_plots(plot_kwargs)
+            inst.plot.generate_plots("root", plot_kwargs)
         return inst
 
     @classmethod
@@ -166,7 +167,7 @@ class Interface:
         kwargs = {**additional_kwargs, **kwargs}
         inst = interface_cls(root, **kwargs)
         if root_plots:
-            inst.create_root_plots(plot_kwargs)
+            inst.plot.generate_plots("root", plot_kwargs)
         return inst
 
     @staticmethod

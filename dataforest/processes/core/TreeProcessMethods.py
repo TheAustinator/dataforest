@@ -1,19 +1,20 @@
 import logging
-from multiprocessing import cpu_count
-from typing import Callable, List, Union
+from typing import Callable, List, Union, TYPE_CHECKING
 
 from joblib import Parallel, delayed
 
 from dataforest.core.TreeSpec import TreeSpec
 from dataforest.structures.cache.BranchCache import BranchCache
 
+if TYPE_CHECKING:
+    from dataforest.core.DataTree import DataTree
+
 
 class TreeProcessMethods:
-    _N_JOBS = cpu_count() - 1
+    _N_CPUS_EXCLUDED = 1
 
-    def __init__(self, tree_spec: TreeSpec, branch_cache: BranchCache):
-        self._tree_spec = tree_spec
-        self._branch_cache = branch_cache
+    def __init__(self, tree: "DataTree"):
+        self._tree = tree
         self._process_methods = list()
         self._tether_process_methods()
 
@@ -23,7 +24,7 @@ class TreeProcessMethods:
 
     def _tether_process_methods(self):
         # TODO: docstring
-        method_names = [run_group_spec.name for run_group_spec in self._tree_spec]
+        method_names = [run_group_spec.name for run_group_spec in self._tree.tree_spec]
         for name in method_names:
             distributed_method = self._build_distributed_method(name)
             setattr(self, name, distributed_method)
@@ -69,10 +70,7 @@ class TreeProcessMethods:
 
             """
             kwargs = {"stop_on_error": stop_on_error, "stop_on_hook_error": stop_on_hook_error, **kwargs}
-            if not self._branch_cache.fully_loaded:
-                self._branch_cache.load_all()
-            all_branches = list(self._branch_cache.values())
-            unique_branches = {str(branch.spec[:method_name]): branch for branch in all_branches}
+            unique_branches = self._tree.unique_branches_at_process(method_name)
 
             def _single_kernel(branch):
                 branch_method = getattr(branch.process, method_name)
@@ -91,14 +89,11 @@ class TreeProcessMethods:
 
             def _distributed_kernel_parallel():
                 process = delayed(_single_kernel)
-                pool = Parallel(n_jobs=self._N_JOBS)
+                pool = Parallel(n_jobs=-1 - self._N_CPUS_EXCLUDED)
                 return pool(process(branch) for branch in unique_branches.values())
 
             exec_scheme = "PARALLEL" if parallel else "SERIAL"
-            logging.info(
-                f"{exec_scheme} execution of {method_name} over {self._N_JOBS} workers on {len(unique_branches)} "
-                f"unique conditions"
-            )
+            logging.info(f"{exec_scheme} execution of {method_name} on {len(unique_branches)} unique branches")
             kernel = _distributed_kernel_parallel if parallel else _distributed_kernel_serial
             ret_vals = kernel()
             return ret_vals

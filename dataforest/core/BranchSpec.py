@@ -4,6 +4,7 @@ from typing import Union, List, Dict
 
 from typeguard import typechecked
 
+from dataforest.core.RunGroupSpec import RunGroupSpec
 from dataforest.core.RunSpec import RunSpec
 from dataforest.utils.exceptions import DuplicateProcessName
 
@@ -176,7 +177,7 @@ class BranchSpec(list):
                 operation_list.append(operation)
         return operation_list
 
-    def _build_run_spec_lookup(self) -> Dict[str, "RunSpec"]:
+    def _build_run_spec_lookup(self) -> Dict[str, Union["RunSpec", "RunGroupSpec"]]:
         """See class definition"""
         run_spec_lookup = {"root": self._RUN_SPEC_CLASS({})}
         for run_spec in self:

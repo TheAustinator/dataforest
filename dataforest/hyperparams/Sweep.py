@@ -88,7 +88,7 @@ class Sweep:
             plot_method_kwargs = dict()
         if figsize is None:
             figsize = tuple(self.DEFAULT_SUBPLOT_SIZE * np.array(self.shape))
-        fig, ax = plt.subplots(*self.shape, sharex="col", sharey="row", figsize=figsize)
+        fig, ax = plt.subplots(*self.shape, sharex="cols", sharey="row", figsize=figsize)
         for (i, j) in self.indices:
             branch = self.branch_matrix[i, j]
             if branch is None:
