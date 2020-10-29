@@ -25,6 +25,7 @@ def build_process_plot_method_lookup(plot_map: dict) -> Dict[str, Dict[str, str]
             process_plot_methods[process][plot_name] = plot_method
     return process_plot_methods
 
+
 def parse_plot_kwargs(plot_map: dict, plot_kwargs_defaults: dict):
     """Parse plot methods plot_kwargs per process from plot_map"""
     all_plot_kwargs = {}
