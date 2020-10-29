@@ -130,6 +130,9 @@ def hook_generate_plots(dp: dataprocess):
     plot_sources = dp.branch.plot.plot_method_lookup
     current_process = dp.branch.current_process
     all_plot_kwargs_sets = dp.branch.plot.plot_kwargs.get(current_process, dict())
+    if not all_plot_kwargs_sets:
+        logging.warning(f"Plot map for '{current_process}' is undefined, skipping plots hook")
+        return
     process_plot_methods = dp.branch.plot.plot_methods.get(current_process, dict())
     process_plot_map = dp.branch[current_process]._plot_map
     requested_plot_methods = deepcopy(process_plot_methods)
