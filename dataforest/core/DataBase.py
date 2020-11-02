@@ -26,5 +26,6 @@ class DataBase:
         metadata: Optional[AnyStr] = None,
         input_paths: Optional[List[AnyStr]] = None,
         mode: Optional[str] = None,
+        parallel: bool = True,
     ):
         raise NotImplementedError("Must be implemented by subclass")

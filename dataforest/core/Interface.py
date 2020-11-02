@@ -66,6 +66,7 @@ class Interface:
         current_process: Optional[str] = None,
         remote_root: Optional[AnyStr] = None,
         root_plots: bool = True,
+        parallel: bool = True,
         plot_kwargs: Optional[dict] = None,
         overwrite_plots: Optional[Iterable[str]] = None,
         **kwargs,
@@ -101,7 +102,7 @@ class Interface:
         }
         kwargs = cls._prune_kwargs(kwargs)
         interface_cls = cls._get_interface_class(kwargs)
-        additional_kwargs = interface_cls._combine_datasets(root, input_paths=input_paths, mode=mode)
+        additional_kwargs = interface_cls._combine_datasets(root, input_paths=input_paths, mode=mode, parallel=parallel)
         kwargs = {**additional_kwargs, **kwargs}
         inst = interface_cls(root, **kwargs)
         if root_plots:

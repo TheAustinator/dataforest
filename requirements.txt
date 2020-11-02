@@ -1,9 +1,13 @@
 fastcore
+dash
+dash-building-blocks
 ipywidgets
 joblib
+jupyter-dash
 matplotlib
 numpy
 pandas
+plotly
 pyyaml
 termcolor
 typeguard

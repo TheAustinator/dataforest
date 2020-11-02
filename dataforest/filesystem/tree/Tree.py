@@ -31,7 +31,6 @@ class Tree:
             self.dict = deepcopy(tree)
         if stack is not None:
             self.stack = stack
-        # self.add_branch(stack)
 
     def up(self) -> list:
         """
