@@ -116,7 +116,7 @@ class ColumnAdder(Block):
         ]
 
 
-class ScatterAnnotator(Block):
+class ScatterAnnotator(ModelBlock):
     @property
     def dropdown(self):
         # TODO: is this going to cause callback output persistence problems?
@@ -148,6 +148,7 @@ class ScatterAnnotator(Block):
             if not n_clicks:
                 return ""
             indices = scatter.get_selected_indices(selected_data)
+            scatter.selected_indices = indices
             self.model.df.loc[indices, col] = label
             return ""
 

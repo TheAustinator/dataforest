@@ -72,10 +72,9 @@ class ModelBlock(Block):
         raise NotImplementedError()
 
 
-class Table(ModelBlock):
-    DF_ATTR = "df"
-
+class Table(Block):
     def layout(self):
-        df = getattr(self.model, self.DF_ATTR)
-        table = dt.DataTable(columns=[{"name": i, "id": i} for i in df.columns], data=df.to_dict("records"),)
+        table = dt.DataTable(
+            columns=[{"name": i, "id": i} for i in self.data["df"].columns], data=df.to_dict("records"),
+        )
         return table

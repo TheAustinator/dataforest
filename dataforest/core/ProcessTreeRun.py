@@ -31,8 +31,10 @@ class ProcessTreeRun:
         filter_ = lambda branch, process: branch[process].done and branch[process].success
         return self._filter_branches(filter_)
 
+    @property
+    def success_all(self):
+        return len(self.success) == self._tree.branches
+
     def _filter_branches(self, filter_: Callable) -> tuple:
-        self._tree.load_all()
-        branches = self._tree._branch_cache.values()
         process = self.process_name
-        return tuple([branch for branch in branches if filter_(branch, process)])
+        return tuple([branch for branch in self._tree.branches if filter_(branch, process)])

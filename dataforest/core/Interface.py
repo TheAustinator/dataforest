@@ -120,6 +120,7 @@ class Interface:
         current_process: Optional[str] = None,
         remote_root: Optional[Union[str, Path]] = None,
         root_plots: bool = True,
+        parallel: bool = True,
         plot_kwargs: Optional[dict] = None,
         **kwargs,
     ) -> Union["DataBranch", "CellBranch", "DataTree", "CellTree"]:
@@ -140,6 +141,8 @@ class Interface:
             current_process:
             remote_root:
             root_plots:
+            parallel: whether or not to parallelize loading and concatenating
+                of datasets. Easier to debug when off
             plot_kwargs: per-method plotting kwargs for methods in
                 `PlotMethods` and subclasses.
                 Ex: plot_kwargs = {
@@ -164,7 +167,7 @@ class Interface:
         }
         kwargs = cls._prune_kwargs(kwargs)
         interface_cls = cls._get_interface_class(kwargs)
-        additional_kwargs = interface_cls._combine_datasets(root, metadata=sample_metadata)
+        additional_kwargs = interface_cls._combine_datasets(root, metadata=sample_metadata, parallel=parallel)
         kwargs = {**additional_kwargs, **kwargs}
         inst = interface_cls(root, **kwargs)
         if root_plots:

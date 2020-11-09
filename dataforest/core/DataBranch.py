@@ -1,6 +1,6 @@
 import logging
 from copy import deepcopy
-from typing import Callable, Dict, Optional, Type, Union, List, Tuple, Any, Iterable
+from typing import Callable, Dict, Optional, Type, Union, List, Tuple, Any, Iterable, Literal
 
 import pandas as pd
 from pathlib import Path
@@ -20,6 +20,7 @@ from dataforest.filesystem.io import ReaderMethods
 from dataforest.filesystem.io.WriterMethods import WriterMethods
 from dataforest.utils.exceptions import BadSubset, BadFilter
 from dataforest.utils.utils import update_recursive, label_df_partitions
+from dataforest.utils.warnings import manual_data_op_warning
 
 Container = (set, list, tuple)
 
@@ -132,6 +133,7 @@ class DataBranch(DataBase):
         self._process_runs = dict()
         self._f = None
         self._w = None
+        self._op_dict = {"subset": self._do_subset, "filter": self._do_filter}
 
     @property
     def current_process(self):
@@ -189,9 +191,29 @@ class DataBranch(DataBase):
             self._meta = self._get_meta(self.current_process)
         return self._meta
 
-    def add_metadata(self, df: pd.DataFrame):
-        # TODO: need to write to keep persistent?
-        self.set_meta(pd.concat([self.meta, df], axis=1))
+    def add_metadata(self, df: pd.DataFrame, save=False):
+        """
+        Merge additional df of metadata with existing on index and optionally
+        save at current process node, overwriting `meta.tsv`.
+        """
+        df_len = len(df)
+        df = self.meta.merge(df, how="left", left_index=True, right_index=True)
+        if len(df) < df_len:
+            logging.warning(f"`merge_metadata` reduced len of input df from {df_len} to {len(df)}")
+        if save:
+            path = self[self.current_process].path / "meta.tsv"
+            df.to_csv(path, sep="\t")
+        self.set_meta(df)
+
+    def subset(
+        self, subset_dict: Optional[Dict[str, Any]] = None, indices: Optional[Union[pd.Series, List, Tuple]] = None,
+    ):
+        return self._apply_manual_data_op("subset", subset_dict, indices)
+
+    def filter(
+        self, filter_dict: Optional[Dict[str, Any]] = None, indices: Optional[Union[pd.Series, List, Tuple]] = None,
+    ):
+        return self._apply_manual_data_op("filter", filter_dict, indices)
 
     def goto_process(self, process_name: str) -> "DataBranch":
         """
@@ -241,49 +263,6 @@ class DataBranch(DataBase):
             branch.set_meta(df)
             yield name, branch
 
-    def fork(self, branch_spec: Union[list, BranchSpec]) -> "DataBranch":
-        """
-        "Forks" the current branch to create a copy with an altered branch_spec, but
-        the same arguments otherwise.
-        Args:
-            branch_spec: new branch_spec with which the "forked" branch is to be created
-
-        Returns:
-            branch: new branch
-        """
-        branch = self.copy(branch_spec=branch_spec)
-        return branch
-
-    def pull(self, local_root: Union[str, Path]) -> "DataBranch":
-        """
-        Copies a branch to a local root directory, reconciling with existing
-        local data.
-        Args:
-            local_root: local root to which
-
-        Returns:
-            branch: new branch with the `root` attribute changed to the local
-                root and `remote_root` set to the prior `root`
-        """
-        self._merge(local_root)
-
-    def push(self, remote_root: Optional[Union[str, Path]]):
-        """
-        Pushes a branch to a remote root directory, reconciling with existing
-        remote data.
-        Args:
-            remote_root: path to remote dir. Should be mounted path
-                (e.g. `/s3/sequencing/my_root`).
-        """
-        remote_root = remote_root if remote_root else self.remote_root
-        if not remote_root:
-            # TODO: make version control error
-            raise ValueError(
-                f"No remote root path to push to provided. Either `DataBranch.remote_root` must be set, or "
-                f"`remote_root` must be passed to `DataBranch.push`"
-            )
-        self._merge(remote_root)
-
     def clear_data(self, attrs: Optional[Iterable[str]] = None, all_data: bool = False):
         if not (attrs != None or all_data):
             raise ValueError("Must provide `args` or `all_data`")
@@ -318,7 +297,10 @@ class DataBranch(DataBase):
         raise NotImplementedError()
 
     def copy(self, **kwargs):
-        return self.__class__(**kwargs)
+        inst = self.__class__(**kwargs)
+        # TODO: not efficient to make them all store this, but neet to persistence
+        inst.set_meta(self.meta)
+        return inst
 
     def copy_legacy(self, **kwargs) -> "DataBranch":
         base_kwargs = self._get_copy_base_kwargs()
@@ -327,7 +309,7 @@ class DataBranch(DataBase):
         return self.__class__(**kwargs)
 
     def set_meta(self, df: Optional[pd.DataFrame]):
-        self._meta = df
+        self._meta = df.copy()
 
     @property
     def paths(self) -> Dict[str, Path]:
@@ -377,7 +359,35 @@ class DataBranch(DataBase):
     def _get_meta(self, process_name):
         raise NotImplementedError("This method should be implemented by `DataBranch` subclasses")
 
-    def _apply_data_ops(self, process_name: str, df: Optional[pd.DataFrame] = None):
+    def _apply_manual_data_op(
+        self,
+        operation: Literal["subset", "filter"],
+        data_op_dict: Dict[str, Any],
+        indices: Optional[Union[pd.Series, List, Tuple]] = None,
+    ):
+        branch = self.copy()
+        if bool(data_op_dict) == bool(indices is not None):
+            raise ValueError("Must specify col and vals together or indices alone")
+        logging.warning(manual_data_op_warning)
+        if data_op_dict:
+            meta = branch._apply_data_op(branch.meta, data_op_dict, operation)
+            branch.set_meta(meta)
+        else:
+            meta = branch.meta.loc[indices]
+            branch.set_meta(meta)
+        return branch
+
+    def _apply_data_op(self, df: pd.DataFrame, operation_dict: Dict[str, Any], operation: Literal["subset", "filter"]):
+        df = df.copy()
+        op = self._op_dict[operation]
+        for col, val in operation_dict.items():
+            if "_MULTI_" in col:
+                df = op(df, val)
+            elif val is not None:
+                df = op(df, {col: val})
+        return df
+
+    def _apply_data_ops_auto(self, process_name: str, df: Optional[pd.DataFrame] = None):
         """
         Apply subset and filter operations to a dataframe where the operations
         are derived from the `branch_spec`, consecutively applying data operations,
@@ -393,18 +403,9 @@ class DataBranch(DataBase):
         filter_list = self.spec.get_filter_list(process_name)
         if df is None:
             self.set_meta(None)
-            df = self.meta.copy()
         for (subset, filter_) in zip(subset_list, filter_list):
-            for column, val in subset.items():
-                if "_MULTI_" in column:
-                    df = self._do_subset(df, val)
-                elif val is not None:
-                    df = self._do_subset(df, {column: val})
-            for column, val in filter_.items():
-                if "_MULTI_" in column:
-                    df = self._do_filter(df, val)
-                elif val is not None:
-                    df = self._do_filter(df, {column: val})
+            df = self._apply_data_op(df, subset, "subset")
+            df = self._apply_data_op(df, filter_, "filter")
         df.replace(" ", "_", regex=True, inplace=True)
         partitions_list = self.spec.get_partition_list(process_name)
         partitions = set().union(*partitions_list)
@@ -417,9 +418,6 @@ class DataBranch(DataBase):
         df_selector = cls._get_df_selector(df, subset_dict)
         df = df.loc[df_selector]
         if len(df) == 0:
-            import ipdb
-
-            ipdb.set_trace()
             raise BadSubset(subset_dict)
         return df
 
