@@ -62,7 +62,7 @@ class TreeProcessMethods:
                     after process execution to save memory. If boolean, whether
                     or not to clear all data args, if list, names of data
                     args to clear
-                force_rerun: force the process to rerun even if already done
+                force_rerun: force the process to rerun even if already success
                 parallel: whether or not to parallelize
                 **kwargs:
 
@@ -74,7 +74,7 @@ class TreeProcessMethods:
 
             def _single_kernel(branch):
                 branch_method = getattr(branch.process, method_name)
-                if not branch[method_name].done or force_rerun:
+                if not branch[method_name].success or force_rerun:
                     ret = branch_method(*args, **kwargs)
                     if clear_data:
                         clear_kwargs = {"all_data": True} if isinstance(clear_data, bool) else {"args": clear_data}

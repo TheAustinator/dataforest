@@ -210,7 +210,13 @@ class BranchSpec(list):
     def __getitem__(self, key: Union[str, int, slice]) -> Union["RunSpec", "BranchSpec"]:
         """Get `RunSpec` either via `int` index or `name`"""
         if isinstance(key, str):
-            return self._run_spec_lookup[key]
+            try:
+                return self._run_spec_lookup[key]
+            except KeyError:
+                raise KeyError(
+                    f"'{key}' not found in spec. Ensure that you've passed `branch_spec` or `tree_spec` to `cf.load`, "
+                    f"`cf.from_metadata`, or whichever init function you used. Current spec: {self}"
+                )
         elif isinstance(key, slice):
             if isinstance(key.stop, str):
                 if key.start or key.step:

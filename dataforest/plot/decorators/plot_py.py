@@ -22,9 +22,13 @@ class plot_py(plot_base):
             facet: Optional[str] = None,
             plot_path: Optional[AnyStr] = None,
             facet_dim: tuple = (),
+            leg_alpha: int = 1,
+            leg_s: int = 36,
             show: bool = True,
             **kwargs,
         ) -> Union[plt.Figure, Tuple[plt.Figure, np.ndarray]]:
+            # bypass_kwargs = {k: v for k, v in kwargs.items() if k in self._bypass}
+            # kwargs = {k: v for k, v in kwargs.items() if k not in self._bypass}
             prep = PlotPreparator(branch)
             stratify = None if stratify in prep.NONE_VARIANTS else stratify
             facet = None if facet in prep.NONE_VARIANTS else facet
@@ -45,9 +49,13 @@ class plot_py(plot_base):
                     ax.set_title(row["facet"])
                 if stratify is not None:
                     kwargs["label"] = row["stratify"]
+                # kwargs = {**kwargs, **bypass_kwargs}
                 plot_func(row["branch"], ax=ax, **kwargs)
                 if stratify is not None:
-                    ax.legend()
+                    leg = ax.legend()
+                    for lh in leg.legendHandles:
+                        lh.set_alpha(leg_alpha)
+                        lh._sizes = [leg_s]
             if plot_path is not None:
                 logging.info(f"saving py figure to {plot_path}")
                 prep.fig.savefig(plot_path)

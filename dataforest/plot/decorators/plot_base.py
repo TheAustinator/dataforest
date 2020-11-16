@@ -1,6 +1,7 @@
 from collections import Callable
 
 from dataforest.core.DataBranch import DataBranch
+from dataforest.utils import listify
 from dataforest.utils.decorator_base import decorator_base
 
 _DEFAULT_BIG_PLOT_RESOLUTION_PX = (1000, 1000)  # width, height in pixels
@@ -11,6 +12,7 @@ _PLOT_FILE_EXT = ".png"
 class plot_base(decorator_base):
     def _wrap(self, func: Callable):
         def wrapper(branch: "DataBranch", *args, **kwargs):
+            self._check_bypass()
             self._check_required_process(func, branch)
             return func(branch, *args, **kwargs)
 
@@ -36,3 +38,9 @@ class plot_base(decorator_base):
             forbidden_found = set(forbidden).union(kwargs.keys())
             if forbidden_found:
                 raise ValueError(f"Forbidden arguments: {forbidden_found} passed to {func.__name__}")
+
+    def _check_bypass(self):
+        if "bypass" in self._kwargs:
+            self._bypass = listify(self._kwargs["bypass"])
+        else:
+            self._bypass = list()

@@ -94,3 +94,12 @@ def label_df_partitions(df: pd.DataFrame, columns: Any, encodings: bool = False)
 
 def order_dict(dict_):
     return {k: order_dict(v) if isinstance(v, dict) else v for k, v in sorted(dict_.items())}
+
+
+def listify(x):
+    if x is None:
+        return list()
+    elif isinstance(x, (tuple, list)):
+        return x
+    else:
+        return [x]

@@ -1,6 +1,5 @@
-import logging
 from copy import deepcopy
-from typing import TYPE_CHECKING, Dict, Any, Optional
+from typing import TYPE_CHECKING, Dict, Any
 
 from IPython.display import Image, display
 import ipywidgets as widgets
