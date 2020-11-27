@@ -160,6 +160,7 @@ def hook_generate_plots(dp: dataprocess):
     for e in exceptions:
         raise e
 
+
 @hook
 def hook_clear_logs(dp: dataprocess):
     logs_path = dp.branch[dp.name].logs_path
