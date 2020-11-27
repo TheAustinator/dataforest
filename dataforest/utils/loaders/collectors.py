@@ -3,6 +3,8 @@ import importlib.util
 from pathlib import Path
 from typing import Optional, Callable
 
+_PLOT_EXCLUDE_NAMES = ["plot_py", "plot_r"]
+
 
 def collect_hooks(path):
     return _collector(path, "hooks.py", _function_filter_hook)
@@ -10,6 +12,10 @@ def collect_hooks(path):
 
 def collect_processes(path):
     return _collector(path, "process.py", _function_filter_process)
+
+
+def collect_plots(path):
+    return _collector(path, func_filter=_function_filter_plot)
 
 
 def _collector(path, filename: Optional[str] = None, func_filter: Optional[Callable] = None):
@@ -56,6 +62,11 @@ def _filter_private(dict_):
 
 def _function_filter_hook(func):
     return func.__name__.startswith("hook_")
+
+
+def _function_filter_plot(func):
+    name = getattr(func, "__name__", "")
+    return name.startswith("plot_") and name not in _PLOT_EXCLUDE_NAMES
 
 
 def _function_filter_process(func):

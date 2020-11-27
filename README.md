@@ -32,7 +32,7 @@ pip install dataforest
 ```
 **Import**
 ```python
-from dataforest import DataForest
+from dataforest import DataBranch
 ```
 
 ### Examples

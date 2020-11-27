@@ -1,10 +1,17 @@
 from pathlib import Path
-from typing import Union
+from typing import Union, Callable
 
 from dataforest.config.MetaConfig import MetaConfig
-from dataforest.utils.loaders.load_config import load_config
+from dataforest.utils.loaders.config import load_config
 
 
-def update_config(config: Union[dict, str, Path]):
-    config = load_config(config)
-    MetaConfig._CONFIG = config
+def get_config_updater(config_loader: Callable) -> Callable:
+    def _update_config(config: Union[dict, str, Path]):
+        config = config_loader(config)
+        MetaConfig.CONFIG = config
+
+    return _update_config
+
+
+def get_current_config() -> dict:
+    return MetaConfig.CONFIG
