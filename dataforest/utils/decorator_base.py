@@ -15,12 +15,14 @@ class decorator_base:
                 decorator args
             **kwargs: decorator kwargs
         """
+        # case 1 no args passed to decorator
         if args and callable(args[0]):
             self._no_args = True
             self._args = tuple()
             self._kwargs = dict()
             self._func = args[0]
             update_wrapper(self, self._func)
+        # case 2 args passed to decorator
         else:
             self._no_args = False
             self._args = args
