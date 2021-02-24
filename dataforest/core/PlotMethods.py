@@ -141,7 +141,8 @@ class PlotMethods(metaclass=MetaPlotMethods):
                 process_run = branch[branch.current_process]
                 plot_name = branch.plot.method_key_lookup.get(method_name, None)
                 if plot_name in process_run._plot_map:
-                    if not (plt_filename_lookup := process_run._plot_map[plot_name]):
+                    plt_filename_lookup = process_run._plot_map[plot_name]
+                    if not plt_filename_lookup:
                         if plt_filename_lookup:
                             _, plt_filepath = next(iter(plt_filename_lookup.items()))
                             plt_dir = plt_filepath.parent

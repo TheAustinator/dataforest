@@ -1,6 +1,6 @@
 import logging
 from copy import deepcopy
-from typing import Callable, Dict, Optional, Type, Union, List, Tuple, Any, Iterable, Literal
+from typing import Callable, Dict, Optional, Type, Union, List, Tuple, Any, Iterable
 
 import pandas as pd
 from pathlib import Path
@@ -360,11 +360,18 @@ class DataBranch(DataBase):
         raise NotImplementedError("This method should be implemented by `DataBranch` subclasses")
 
     def _apply_manual_data_op(
-        self,
-        operation: Literal["subset", "filter"],
-        data_op_dict: Dict[str, Any],
-        indices: Optional[Union[pd.Series, List, Tuple]] = None,
+        self, operation: str, data_op_dict: Dict[str, Any], indices: Optional[Union[pd.Series, List, Tuple]] = None,
     ):
+        """
+
+        Args:
+            operation: Literal["subset", "filter"]
+            data_op_dict:
+            indices:
+
+        Returns:
+
+        """
         branch = self.copy()
         if bool(data_op_dict) == bool(indices is not None):
             raise ValueError("Must specify col and vals together or indices alone")
@@ -377,7 +384,17 @@ class DataBranch(DataBase):
             branch.set_meta(meta)
         return branch
 
-    def _apply_data_op(self, df: pd.DataFrame, operation_dict: Dict[str, Any], operation: Literal["subset", "filter"]):
+    def _apply_data_op(self, df: pd.DataFrame, operation_dict: Dict[str, Any], operation: str):
+        """
+
+        Args:
+            df:
+            operation_dict:
+            operation: Literal["subset", "filter"] 
+
+        Returns:
+
+        """
         df = df.copy()
         op = self._op_dict[operation]
         for col, val in operation_dict.items():

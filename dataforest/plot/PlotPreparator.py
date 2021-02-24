@@ -1,5 +1,5 @@
 from math import ceil
-from typing import Callable, Optional, Literal, Union, List, Any, Tuple, Iterable
+from typing import Callable, Optional, Union, List, Any, Tuple, Iterable
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -81,7 +81,16 @@ class PlotPreparator:
         self._branch_groupby(cols, "stratify")
         self.strat_cols = cols
 
-    def _branch_groupby(self, cols: Union[str, Iterable[str]], key_colname: Literal["facet", "stratify"]):
+    def _branch_groupby(self, cols: Union[str, Iterable[str]], key_colname: str):
+        """
+
+        Args:
+            cols:
+            key_colname: "facet" or "stratify"
+
+        Returns:
+
+        """
         df = self.branch_df
         df["grp"] = df["branch"].apply(lambda branch: list(branch.groupby(cols)))
         df = df.explode("grp").reset_index(drop=True)
