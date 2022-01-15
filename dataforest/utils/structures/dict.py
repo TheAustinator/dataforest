@@ -1,8 +1,12 @@
-def map_dict_vals(dict_, func, *args, pass_keys=False, print_keys=False, **kwargs):
+def map_dict_vals(dict_, func, *args, pass_keys=False, pass_enum=False, print_keys=False, **kwargs):
     d = dict()
-    for k, v in dict_.items():
+    for i, (k, v) in enumerate(dict_.items()):
         if print_keys:
             print(k)
-        _args = (k, v, *args) if pass_keys else (v, *args)
+        _args = [v, *args]
+        if pass_keys:
+            _args.insert(0, k)
+        if pass_enum:
+            _args.insert(0, i)
         d[k] = func(*_args, **kwargs)
     return d
