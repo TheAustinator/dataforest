@@ -5,7 +5,8 @@ ipywidgets
 joblib
 jupyter-dash
 matplotlib
-numpy
+# for numba
+numpy==1.20
 pandas
 plotly
 pyyaml
