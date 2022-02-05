@@ -1,15 +1,20 @@
 fastcore
 dash
 dash-building-blocks
+dash-bio
 ipywidgets
 joblib
 jupyter-dash
+lazy_import
 matplotlib
 # for numba
-numpy==1.20
+numpy
 pandas
 plotly
 pyyaml
 termcolor
 typeguard
 Ipython
+
+setuptools
+scikit-learn
