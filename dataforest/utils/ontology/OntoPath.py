@@ -30,6 +30,9 @@ class OntoPath(type(Path())):
         s = pd.Series(self.tolist())
         return self._drop_tail(s) if drop_tail else s
 
+    def distance(self, other):
+        pass
+
     def _get_cmp_df(self, other: "OntoPath", drop_tail: bool = True) -> pd.DataFrame:
         """Get comparative dataframe for ancestry methods"""
         df = pd.DataFrame({"self": self, "other": other})
@@ -37,7 +40,11 @@ class OntoPath(type(Path())):
 
     @staticmethod
     def _is_fuzzy_match(df):
-        return ((df.apply(np.equal, axis=1)) | (df.min(axis=1) == "*")).all()
+        return self._position_matches(df).all()
+
+    @staticmethod
+    def _position_matches(df):
+        return (df.apply(lambda s: len(set(s)) == 1, axis=1)) | ((df == "*").any(axis=1))
 
     @staticmethod
     def _drop_tail(df: Union[pd.Series, pd.DataFrame]) -> Union[pd.Series, pd.DataFrame]:
@@ -50,3 +57,6 @@ class OntoPath(type(Path())):
 
     def __len__(self):
         return len(self.tolist())
+
+    def __invert__(self, other):
+        return self.is_related(other, fuzzy=True)

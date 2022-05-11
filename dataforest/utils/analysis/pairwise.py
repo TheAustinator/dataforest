@@ -39,7 +39,10 @@ def pairwise_metric_groups(args_dict_1, args_dict_2, metric):
 
 def pairwise_metric_heat(args_dict, metric, cluster=False, branch_cut_row=None, branch_cut_col=None, set_diag=False, engine: Literal["seaborn", "plotly"] = "seaborn", **kwargs):
     plot_engines = {"seaborn": heat_sns, "plotly": heat_plotly}
-    corr = pairwise_metric(args_dict, metric, set_diag=set_diag)
+    try:
+        corr = pairwise_metric(args_dict, metric, set_diag=set_diag)
+    except __ as e:
+        pairwise_metric(pd.Series(args_dict).map(lambda x: np.array(x).reshape(1, -1)), metric, set_diag=set_diag)
     plot_func = plot_engines[engine]
     fig = plot_func(corr, cluster=cluster, branch_cut_row=branch_cut_row, branch_cut_col=branch_cut_col, **kwargs)
     return corr, fig
