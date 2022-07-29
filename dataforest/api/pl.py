@@ -129,3 +129,20 @@ def dash_flex(df: pd.DataFrame):
 
     app.run_server(host="0.0.0.0", mode="jupyterlab", debug=True)
     return app
+
+
+def value_counts_pivot(df, cols, heatmap=False, cluster=False, fillna=0, norm=None, **kwargs):
+    piv = df.value_counts(cols).reset_index().pivot(*cols)
+    piv.columns = piv.columns.droplevel()
+    if norm == 0:
+        piv /= piv.sum(axis=0)
+    elif norm == 1:
+        piv = (piv.T / piv.sum(axis=1)).T
+    if heatmap:
+        import seaborn as sns
+        from matplotlib import pyplot as plt
+        plot = sns.clustermap if cluster else sns.heatmap
+        piv = piv.fillna(fillna) if cluster else piv
+        plot(piv, **kwargs)
+        plt.show()
+    return piv

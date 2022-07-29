@@ -1,6 +1,6 @@
 import logging
-from itertools import product
-from typing import Union, Literal
+from itertools import product, combinations
+from typing import Union, Literal, Optional, List
 
 import dash_bio as dashbio
 from matplotlib import pyplot as plt
@@ -10,19 +10,33 @@ from pandas.core.dtypes.common import is_numeric_dtype, is_bool_dtype
 from seaborn import heatmap, clustermap, hls_palette, color_palette
 
 
-def pairwise_metric(args_map: Union[pd.Series, dict], metric, set_diag=False):
+def pairwise_metric(args_map: Union[pd.Series, dict], metric, cores: Optional[int] = None, set_diag=False, pairs_override:Optional[List[tuple]] = None, symmetric: bool=True):
     if isinstance(args_map, dict):
         args_map = pd.Series(args_map)
         dupes = args_map[args_map.index.duplicated()].index.tolist()
         args_map = args_map[~args_map.index.duplicated()]
         if dupes:
             logging.warning(f"duplicates in `args_map`: {dupes}. Dropped dupes")
-    pair_keys = product(args_map.index.tolist(), args_map.index.tolist())
+    if pairs_override is None:
+        keys = args_map.index.tolist()
+        pair_keys = list(combinations(keys, 2)) if symmetric else list(product(keys, keys))
+    else:
+        pair_keys = list(pairs_override)
     df = pd.DataFrame()
-    for keys in pair_keys:
-        pair = args_map[list(keys)].tolist()
-        result = metric(*pair)
-        df.loc[keys[0], keys[1]] = result
+    if cores:
+        from joblib import Parallel, delayed
+        args_map = args_map.to_dict()
+        results = Parallel(n_jobs=cores)(delayed(metric)(args_map[keys[0]], args_map[keys[1]]) for keys in pair_keys)
+        # import ipdb; ipdb.set_trace()
+        for i, keys in enumerate(pair_keys):
+            df.loc[keys[0], keys[1]] = results[i]
+    else:
+        for keys in pair_keys:
+            pair = args_map[list(keys)].tolist()
+            result = metric(*pair)
+            df.loc[keys[0], keys[1]] = result
+            if symmetric:
+                df.loc[keys[1], keys[0]] = result
     if set_diag is not False:
         dff = df.copy()
         dff.values[[np.arange(df.shape[0])]*2] = 0
@@ -37,12 +51,12 @@ def pairwise_metric_groups(args_dict_1, args_dict_2, metric):
     raise NotImplementedError()
 
 
-def pairwise_metric_heat(args_dict, metric, cluster=False, branch_cut_row=None, branch_cut_col=None, set_diag=False, engine: Literal["seaborn", "plotly"] = "seaborn", **kwargs):
+def pairwise_metric_heat(args_dict, metric, cluster=False, branch_cut_row=None, branch_cut_col=None, set_diag=False, cores: Optional[int] = None, engine: Literal["seaborn", "plotly"] = "seaborn", **kwargs):
     plot_engines = {"seaborn": heat_sns, "plotly": heat_plotly}
     try:
-        corr = pairwise_metric(args_dict, metric, set_diag=set_diag)
-    except __ as e:
-        pairwise_metric(pd.Series(args_dict).map(lambda x: np.array(x).reshape(1, -1)), metric, set_diag=set_diag)
+        corr = pairwise_metric(args_dict, metric, set_diag=set_diag, cores=cores)
+    except Exception as e:
+        corr = pairwise_metric(pd.Series(args_dict).map(lambda x: np.array(x).reshape(1, -1)), metric, set_diag=set_diag)
     plot_func = plot_engines[engine]
     fig = plot_func(corr, cluster=cluster, branch_cut_row=branch_cut_row, branch_cut_col=branch_cut_col, **kwargs)
     return corr, fig
