@@ -8,13 +8,11 @@ jupyter-dash
 lazy_import
 matplotlib
 # for numba
-numpy
-pandas
+numpy<1.24,>=1.18
 plotly
 pyyaml
 termcolor
 typeguard
 Ipython
-
-setuptools==62.0.0
+setuptools
 scikit-learn
