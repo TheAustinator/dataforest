@@ -14,5 +14,5 @@ pyyaml
 termcolor
 typeguard
 Ipython
-setuptools
+setuptools==62.0.0
 scikit-learn
