@@ -16,5 +16,5 @@ termcolor
 typeguard
 Ipython
 
-setuptools==62.0.0
+setuptools==65.5.1
 scikit-learn
