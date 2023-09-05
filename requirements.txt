@@ -8,7 +8,7 @@ jupyter-dash
 lazy_import
 matplotlib
 # for numba
-numpy<1.24,>=1.18
+numpy<1.24,>=1.2
 plotly
 pyyaml
 termcolor
